@@ -7,6 +7,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
+import org.springframework.ai.huggingface.HuggingfaceChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.context.annotation.Bean;
@@ -22,7 +24,7 @@ public class AIProviderConfig {
                 .maxMessages(20)
                 .build();
     }
-  /*
+
     // OpenAI client with MCP tools
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
@@ -42,6 +44,15 @@ public class AIProviderConfig {
                 .build();
     }
 
+    @Bean(name = "googleChatClient")
+    ChatClient geminChatClient(GoogleGenAiChatModel googleGenAiChatModel,
+                               ChatMemory chatMemory) {
+        logger.info("Creating google Chat Client with MCP tools");
+        return ChatClient.builder(googleGenAiChatModel)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .build();
+    }
+
     @Bean(name = "ollamaChatClient")
     ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
                                  ChatMemory chatMemory) {
@@ -49,6 +60,16 @@ public class AIProviderConfig {
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
-    }*/
+    }
+
+    @Bean(name = "haggingFaceChatClient")
+    ChatClient huggingfaceChatClient(HuggingfaceChatModel huggingfaceChatModel,
+                                ChatMemory chatMemory) {
+        logger.info("Creating HaggingFace Chat Client with MCP tools");
+        return ChatClient.builder(huggingfaceChatModel)
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .build();
+    }
+
 
 }
