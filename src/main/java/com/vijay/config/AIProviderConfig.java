@@ -1,5 +1,8 @@
 package com.vijay.config;
 
+import com.vijay.manager.KnowledgeGraphAdvisor;
+import com.vijay.manager.ResponseSummarizerAdvisor;
+import com.vijay.manager.SelfRefineEvaluationAdvisor;
 import com.vijay.tools.AIAgentToolService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +41,6 @@ public class AIProviderConfig {
                     System.out.println("--- TOOL EXECUTION FAILED: " + toolName + " ---");
                     return "Tool execution failed: ";
                 })
-
                 .build();
     }
 
@@ -47,21 +49,37 @@ public class AIProviderConfig {
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
                                 ChatMemory chatMemory,
+                                KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                                ResponseSummarizerAdvisor summarizerAdvisor,
+                                SelfRefineEvaluationAdvisor refineAdvisor,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("Creating OpenAI Chat Client with MCP tools");
+        logger.info("Creating OpenAI Chat Client with Multi-Brain Architecture");
         return ChatClient.builder(openAiChatModel)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
-                .defaultTools(aiAgentToolService)
+                .defaultAdvisors(
+                    MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
+                    knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
+                    summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
+                    refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                )
+                .defaultTools(aiAgentToolService)  // Brain 1: Retriever (tools)
                 .build();
     }
 
     @Bean(name = "anthropicChatClient")
     ChatClient anthropicChatClient(AnthropicChatModel anthropicChatModel,
                                    ChatMemory chatMemory,
+                                   KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                                   ResponseSummarizerAdvisor summarizerAdvisor,
+                                   SelfRefineEvaluationAdvisor refineAdvisor,
                                    AIAgentToolService aiAgentToolService) {
         logger.info("Creating Anthropic Chat Client with MCP tools");
         return ChatClient.builder(anthropicChatModel)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
+                        knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
+                        summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
+                        refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                )
                 .defaultTools(aiAgentToolService)
                 .build();
     }
@@ -69,10 +87,18 @@ public class AIProviderConfig {
     @Bean(name = "googleChatClient")
     ChatClient geminChatClient(GoogleGenAiChatModel googleGenAiChatModel,
                                ChatMemory chatMemory,
+                               KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                               ResponseSummarizerAdvisor summarizerAdvisor,
+                               SelfRefineEvaluationAdvisor refineAdvisor,
                                AIAgentToolService aiAgentToolService) {
         logger.info("Creating google Chat Client with MCP tools");
         return ChatClient.builder(googleGenAiChatModel)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
+                        knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
+                        summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
+                        refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                )
                 .defaultTools(aiAgentToolService)
                 .build();
     }
@@ -80,10 +106,18 @@ public class AIProviderConfig {
     @Bean(name = "ollamaChatClient")
     ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
                                  ChatMemory chatMemory,
+                                KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                                ResponseSummarizerAdvisor summarizerAdvisor,
+                                SelfRefineEvaluationAdvisor refineAdvisor,
                                 AIAgentToolService aiAgentToolService) {
         logger.info("Creating Ollama Chat Client with MCP tools");
         return ChatClient.builder(ollamaChatModel)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
+                        knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
+                        summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
+                        refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                )
                 .defaultTools(aiAgentToolService)
                 .build();
     }
