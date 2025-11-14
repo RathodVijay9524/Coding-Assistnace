@@ -1,14 +1,18 @@
 package com.vijay.config;
 
+import com.vijay.manager.ChainOfThoughtPlannerAdvisor;
 import com.vijay.manager.EnhancedContextBuilderAdvisor;
 import com.vijay.manager.EnhancedSelfRefineAdvisor;
 import com.vijay.manager.KnowledgeGraphAdvisor;
+import com.vijay.manager.LocalQueryPlannerAdvisor;
+import com.vijay.manager.MultiCriteriaJudgeAdvisor;
 import com.vijay.manager.QueryPlannerAdvisor;
 import com.vijay.manager.SmartQualityAdvisor;
 import com.vijay.manager.ResponseSummarizerAdvisor;
 import com.vijay.manager.SelfRefineEvaluationAdvisor;
 import com.vijay.tools.AIAgentToolService;
 import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -54,39 +58,71 @@ public class AIProviderConfig {
                 .build();
     }
 
-    // Code Understanding Vector Stores
+    // Local Ollama Embedding Model (Token-Free!)
+    @Bean
+    @Primary
+    public OllamaEmbeddingModel ollamaEmbeddingModel() {
+        logger.info("🚀 Creating LOCAL Ollama Embedding Model (nomic-embed-text) - NO TOKENS USED!");
+        return OllamaEmbeddingModel.builder()
+                .withModel("nomic-embed-text:latest")  // Your 274MB local model
+                .withBaseUrl("http://localhost:11434")
+                .build();
+    }
+
+    // Code Understanding Vector Stores (Using Local Ollama!)
     @Bean
     @Qualifier("summaryVectorStore")
-    public VectorStore summaryVectorStore(OpenAiEmbeddingModel embeddingModel) {
-        logger.info("Creating Summary Vector Store for code file summaries using OpenAI embeddings");
+    public VectorStore summaryVectorStore(OllamaEmbeddingModel embeddingModel) {
+        logger.info("Creating Summary Vector Store for code file summaries using LOCAL Ollama embeddings");
         return SimpleVectorStore.builder(embeddingModel).build();
     }
 
     @Bean
     @Qualifier("chunkVectorStore") 
-    public VectorStore chunkVectorStore(OpenAiEmbeddingModel embeddingModel) {
-        logger.info("Creating Chunk Vector Store for code chunks using OpenAI embeddings");
+    public VectorStore chunkVectorStore(OllamaEmbeddingModel embeddingModel) {
+        logger.info("Creating Chunk Vector Store for code chunks using LOCAL Ollama embeddings");
         return SimpleVectorStore.builder(embeddingModel).build();
     }
 
-    // OpenAI client with MCP tools
+    // LOCAL OLLAMA CLIENT (Token-Free!) 🚀
 
+    @Bean(name = "ollamaChatClient")
+    @Primary
+    ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
+                               ChatMemory chatMemory,
+                               LocalQueryPlannerAdvisor localPlanner,
+                               KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                               ResponseSummarizerAdvisor summarizerAdvisor,
+                               AIAgentToolService aiAgentToolService) {
+        logger.info("🚀 Creating LOCAL OLLAMA Chat Client - NO TOKENS USED! Local Intelligence v3.1");
+        return ChatClient.builder(ollamaChatModel)
+                .defaultAdvisors(
+                    MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
+                    localPlanner,              // Brain 0: Local Query Planner (order: 0) - NO TOKENS!
+                    knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
+                    summarizerAdvisor          // Brain 2: Response Summarizer (order: 500)
+                )
+                .defaultTools(aiAgentToolService)  // Tools available for Brain 1
+                .build();
+    }
+
+    // OpenAI client (backup for complex reasoning when needed)
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
                                 ChatMemory chatMemory,
-                                QueryPlannerAdvisor queryPlannerAdvisor,
+                                ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
                                 KnowledgeGraphAdvisor knowledgeGraphAdvisor,
                                 ResponseSummarizerAdvisor summarizerAdvisor,
-                                SelfRefineEvaluationAdvisor refineAdvisor,
+                                MultiCriteriaJudgeAdvisor multiCriteriaJudge,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("Creating OpenAI Chat Client with Working Multi-Brain Architecture v2.2");
+        logger.info("Creating OpenAI Chat Client (Backup) with Human-Like Thinking Architecture v3.0");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
                     MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
-                    queryPlannerAdvisor,       // Brain 0: Query Planner (order: 0) - RUNS FIRST
+                    chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0) - THINKS FIRST
                     knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
                     summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                    refineAdvisor              // Brain 3: Self-Refine (order: 1000)
+                    multiCriteriaJudge         // Brain 3: Multi-Criteria Judge (order: 1000) - VALIDATES LAST
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
