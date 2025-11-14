@@ -20,48 +20,60 @@ public class CodeRetrieverService {
     private final VectorStore chunkStore;
     private final DependencyGraphBuilder dependencyGraph;
     private final ContextManager contextManager;
+    private final QueryPlanner queryPlanner;
 
     public CodeRetrieverService(@Qualifier("summaryVectorStore") VectorStore summaryStore,
                                @Qualifier("chunkVectorStore") VectorStore chunkStore,
                                DependencyGraphBuilder dependencyGraph,
-                               ContextManager contextManager) {
+                               ContextManager contextManager,
+                               QueryPlanner queryPlanner) {
         this.summaryStore = summaryStore;
         this.chunkStore = chunkStore;
         this.dependencyGraph = dependencyGraph;
         this.contextManager = contextManager;
+        this.queryPlanner = queryPlanner;
     }
 
     public CodeContext retrieveCodeContext(String query) {
         logger.info("🔍 Brain 1 (Code Retriever): Searching for code context - '{}'", query);
         
-        // Step 0: Initialize token budget management
+        // Use intelligent query planning
+        return retrieveCodeContextWithPlan(query);
+    }
+
+    public CodeContext retrieveCodeContextWithPlan(String query) {
+        logger.info("🎯 Brain 1 (Intelligent Code Retriever): Using search plan for - '{}'", query);
+        
+        // Step 0: Create intelligent search plan
+        QueryPlanner.SearchPlan plan = queryPlanner.createSearchPlan(query);
         ContextManager.ContextBudget budget = contextManager.createBudget(query);
+        
+        // Override budget with plan's allocation
+        budget.maxTokens = plan.tokenBudget;
+        budget.remainingTokens = plan.tokenBudget - budget.usedTokens;
+        
         CodeContext context = new CodeContext();
         
         try {
-            // Step 1: Find relevant files using summaries
-            List<Document> fileSummaries = summaryStore.similaritySearch(
-                SearchRequest.builder()
-                    .query(query)
-                    .topK(3)
-                    .build()
-            );
-            
-            logger.info("📁 Found {} relevant files from summaries", fileSummaries.size());
+            // Step 1: Execute search strategy based on plan
+            List<Document> fileSummaries = executeSearchStrategy(plan, budget);
+            logger.info("📁 Found {} relevant files using {} strategy", 
+                fileSummaries.size(), plan.searchStrategy);
             
             if (fileSummaries.isEmpty()) {
                 logger.info("⚠️ No relevant files found for query: {}", query);
                 return context;
             }
             
-            // Step 2: Expand using dependency graph with budget awareness
-            Set<String> allRelevantFiles = expandWithDependenciesAndBudget(fileSummaries, query, budget);
-            logger.info("🔗 Expanded to {} files using dependency graph", allRelevantFiles.size());
+            // Step 2: Expand using plan parameters
+            Set<String> allRelevantFiles = expandWithPlan(fileSummaries, plan, budget);
+            logger.info("🔗 Expanded to {} files (maxHops: {}, reverseDeps: {})", 
+                allRelevantFiles.size(), plan.maxHops, plan.includeReverseDeps);
             logger.info("💰 Token Budget after expansion: {}/{} tokens ({:.1f}%)", 
                 budget.usedTokens, budget.maxTokens, budget.getUsagePercentage());
             
-            // Step 3: Get detailed code chunks with budget management
-            List<Document> codeChunks = retrieveCodeChunksWithBudget(query, allRelevantFiles, budget);
+            // Step 3: Get detailed code chunks with plan-based selection
+            List<Document> codeChunks = retrieveCodeChunksWithPlan(plan, allRelevantFiles, budget);
             logger.info("🧩 Retrieved {} code chunks", codeChunks.size());
             logger.info("💰 Final Token Budget: {}/{} tokens ({:.1f}%)", 
                 budget.usedTokens, budget.maxTokens, budget.getUsagePercentage());
@@ -70,20 +82,275 @@ public class CodeRetrieverService {
                 logger.warn("⚠️ Context near token limit - consider reducing scope");
             }
             
-            // Step 4: Build context
+            // Step 4: Build context with plan metadata
             context.setFileSummaries(fileSummaries);
             context.setCodeChunks(codeChunks);
             context.setRelevantFiles(allRelevantFiles);
             context.setQuery(query);
             context.setTokensUsed(budget.usedTokens);
+            context.setSearchStrategy(plan.searchStrategy);
+            context.setSearchConfidence(plan.confidence);
             
-            logger.info("✅ Brain 1 (Code Retriever): Context built successfully");
+            logger.info("✅ Brain 1 (Intelligent Code Retriever): Context built successfully");
             
         } catch (Exception e) {
-            logger.error("❌ Brain 1 (Code Retriever): Failed to retrieve context", e);
+            logger.error("❌ Brain 1 (Intelligent Code Retriever): Failed to retrieve context", e);
         }
         
         return context;
+    }
+
+    private List<Document> executeSearchStrategy(QueryPlanner.SearchPlan plan, ContextManager.ContextBudget budget) {
+        switch (plan.searchStrategy) {
+            case "entity_centered":
+                return executeEntityCenteredSearch(plan, budget);
+            case "dependency_graph":
+                return executeDependencyGraphSearch(plan, budget);
+            case "method_focused":
+                return executeMethodFocusedSearch(plan, budget);
+            case "error_trace":
+                return executeErrorTraceSearch(plan, budget);
+            case "configuration_chain":
+                return executeConfigurationChainSearch(plan, budget);
+            default: // similarity_search
+                return executeSimilaritySearch(plan, budget);
+        }
+    }
+
+    private List<Document> executeEntityCenteredSearch(QueryPlanner.SearchPlan plan, ContextManager.ContextBudget budget) {
+        List<Document> results = new ArrayList<>();
+        
+        // First try to find files by entity names
+        for (String entity : plan.targetEntities) {
+            List<Document> entityResults = summaryStore.similaritySearch(
+                SearchRequest.builder()
+                    .query(entity)
+                    .topK(2)
+                    .build()
+            );
+            results.addAll(entityResults);
+        }
+        
+        // If no entity-specific results, fall back to query search
+        if (results.isEmpty()) {
+            results = summaryStore.similaritySearch(
+                SearchRequest.builder()
+                    .query(plan.originalQuery)
+                    .topK(plan.topK)
+                    .build()
+            );
+        }
+        
+        return results.stream().distinct().limit(plan.topK).collect(Collectors.toList());
+    }
+
+    private List<Document> executeDependencyGraphSearch(QueryPlanner.SearchPlan plan, ContextManager.ContextBudget budget) {
+        // Start with broader search for architecture queries
+        return summaryStore.similaritySearch(
+            SearchRequest.builder()
+                .query(plan.originalQuery)
+                .topK(plan.topK)
+                .build()
+        );
+    }
+
+    private List<Document> executeMethodFocusedSearch(QueryPlanner.SearchPlan plan, ContextManager.ContextBudget budget) {
+        // Focus on implementation details
+        String enhancedQuery = plan.originalQuery + " implementation method function";
+        return summaryStore.similaritySearch(
+            SearchRequest.builder()
+                .query(enhancedQuery)
+                .topK(plan.topK)
+                .build()
+        );
+    }
+
+    private List<Document> executeErrorTraceSearch(QueryPlanner.SearchPlan plan, ContextManager.ContextBudget budget) {
+        // Look for error handling and exception patterns
+        String enhancedQuery = plan.originalQuery + " error exception handling try catch";
+        return summaryStore.similaritySearch(
+            SearchRequest.builder()
+                .query(enhancedQuery)
+                .topK(plan.topK)
+                .build()
+        );
+    }
+
+    private List<Document> executeConfigurationChainSearch(QueryPlanner.SearchPlan plan, ContextManager.ContextBudget budget) {
+        // Focus on configuration files and setup
+        String enhancedQuery = plan.originalQuery + " configuration config setup bean";
+        return summaryStore.similaritySearch(
+            SearchRequest.builder()
+                .query(enhancedQuery)
+                .topK(plan.topK)
+                .build()
+        );
+    }
+
+    private List<Document> executeSimilaritySearch(QueryPlanner.SearchPlan plan, ContextManager.ContextBudget budget) {
+        // Standard similarity search
+        return summaryStore.similaritySearch(
+            SearchRequest.builder()
+                .query(plan.originalQuery)
+                .topK(plan.topK)
+                .build()
+        );
+    }
+
+    private Set<String> expandWithPlan(List<Document> fileSummaries, QueryPlanner.SearchPlan plan, ContextManager.ContextBudget budget) {
+        Set<String> allFiles = new HashSet<>();
+        Set<String> visited = new HashSet<>();
+        Queue<String> toExplore = new LinkedList<>();
+        
+        // Start with initially found files
+        List<String> initialFiles = new ArrayList<>();
+        for (Document doc : fileSummaries) {
+            String filename = (String) doc.getMetadata().get("filename");
+            if (filename != null) {
+                initialFiles.add(filename);
+            }
+        }
+        
+        // Add plan's starting files if specified
+        if (!plan.startingFiles.isEmpty()) {
+            initialFiles.addAll(plan.startingFiles);
+        }
+        
+        // Prioritize files by relevance
+        List<String> prioritizedFiles = contextManager.prioritizeFiles(initialFiles, plan.originalQuery, budget);
+        
+        for (String filename : prioritizedFiles) {
+            allFiles.add(filename);
+            toExplore.add(filename);
+        }
+        
+        // Expand using plan parameters
+        int currentDepth = 0;
+        int maxDepth = budget.isNearLimit() ? Math.max(1, plan.maxHops - 1) : plan.maxHops;
+        
+        while (!toExplore.isEmpty() && currentDepth < maxDepth && !budget.isOverLimit()) {
+            int levelSize = toExplore.size();
+            
+            for (int i = 0; i < levelSize && !budget.isOverLimit(); i++) {
+                String currentFile = toExplore.poll();
+                if (visited.contains(currentFile)) continue;
+                
+                visited.add(currentFile);
+                
+                // Get dependencies
+                Set<String> dependencies = dependencyGraph.getDependencies(currentFile);
+                List<String> relevantDeps = contextManager.prioritizeFiles(
+                    new ArrayList<>(dependencies), plan.originalQuery, budget);
+                
+                int maxDepsToAdd = budget.isNearLimit() ? 2 : 4;
+                int addedDeps = 0;
+                
+                for (String dep : relevantDeps) {
+                    if (!visited.contains(dep) && addedDeps < maxDepsToAdd) {
+                        allFiles.add(dep);
+                        toExplore.add(dep);
+                        addedDeps++;
+                    }
+                }
+                
+                // Get reverse dependencies if plan allows
+                if (plan.includeReverseDeps) {
+                    Set<String> reverseDeps = dependencyGraph.getReverseDependencies(currentFile);
+                    List<String> relevantReverseDeps = contextManager.prioritizeFiles(
+                        new ArrayList<>(reverseDeps), plan.originalQuery, budget);
+                    
+                    int maxReverseDepsToAdd = budget.isNearLimit() ? 1 : 2;
+                    int addedReverseDeps = 0;
+                    
+                    for (String revDep : relevantReverseDeps) {
+                        if (!visited.contains(revDep) && addedReverseDeps < maxReverseDepsToAdd) {
+                            allFiles.add(revDep);
+                            toExplore.add(revDep);
+                            addedReverseDeps++;
+                        }
+                    }
+                }
+            }
+            
+            currentDepth++;
+        }
+        
+        logger.debug("🔗 Plan-based expansion: {} → {} files (depth: {}, strategy: {})", 
+            fileSummaries.size(), allFiles.size(), currentDepth, plan.searchStrategy);
+        
+        return allFiles;
+    }
+
+    private List<Document> retrieveCodeChunksWithPlan(QueryPlanner.SearchPlan plan, Set<String> relevantFiles, ContextManager.ContextBudget budget) {
+        List<Document> allChunks = new ArrayList<>();
+        
+        // Adjust search parameters based on plan
+        int topK = budget.isNearLimit() ? Math.max(3, plan.topK - 2) : plan.topK;
+        
+        // Create enhanced query based on plan
+        String searchQuery = createEnhancedQuery(plan);
+        
+        List<Document> queryChunks = chunkStore.similaritySearch(
+            SearchRequest.builder()
+                .query(searchQuery)
+                .topK(topK)
+                .build()
+        );
+        
+        // Filter chunks to only include those from relevant files
+        List<Document> filteredChunks = queryChunks.stream()
+            .filter(chunk -> {
+                String chunkFilename = (String) chunk.getMetadata().get("filename");
+                return relevantFiles.contains(chunkFilename);
+            })
+            .collect(Collectors.toList());
+        
+        // Convert to content strings for budget management
+        List<String> chunkContents = filteredChunks.stream()
+            .map(Document::getText)
+            .collect(Collectors.toList());
+        
+        // Apply budget management and pruning
+        List<String> prunedContents = contextManager.pruneContent(chunkContents, budget, plan.originalQuery);
+        
+        // Convert back to Documents
+        for (int i = 0; i < Math.min(filteredChunks.size(), prunedContents.size()); i++) {
+            if (prunedContents.contains(filteredChunks.get(i).getText())) {
+                allChunks.add(filteredChunks.get(i));
+            }
+        }
+        
+        logger.info("📊 Plan-based chunk retrieval: {} chunks selected (strategy: {})", 
+            allChunks.size(), plan.searchStrategy);
+        
+        return allChunks.stream().distinct().collect(Collectors.toList());
+    }
+
+    private String createEnhancedQuery(QueryPlanner.SearchPlan plan) {
+        StringBuilder enhancedQuery = new StringBuilder(plan.originalQuery);
+        
+        // Add relevant keywords based on strategy
+        switch (plan.searchStrategy) {
+            case "method_focused":
+                enhancedQuery.append(" method implementation function");
+                break;
+            case "error_trace":
+                enhancedQuery.append(" error exception handling");
+                break;
+            case "configuration_chain":
+                enhancedQuery.append(" configuration setup bean");
+                break;
+            case "dependency_graph":
+                enhancedQuery.append(" architecture relationship dependency");
+                break;
+        }
+        
+        // Add target entities to boost relevance
+        for (String entity : plan.targetEntities) {
+            enhancedQuery.append(" ").append(entity);
+        }
+        
+        return enhancedQuery.toString();
     }
 
     private Set<String> expandWithDependencies(List<Document> fileSummaries, int maxDepth) {
@@ -389,6 +656,8 @@ public class CodeRetrieverService {
         private Set<String> relevantFiles = new HashSet<>();
         private String query;
         private int tokensUsed = 0;
+        private String searchStrategy = "similarity_search";
+        private double searchConfidence = 0.0;
 
         // Getters and setters
         public List<Document> getFileSummaries() { return fileSummaries; }
@@ -405,6 +674,12 @@ public class CodeRetrieverService {
         
         public int getTokensUsed() { return tokensUsed; }
         public void setTokensUsed(int tokensUsed) { this.tokensUsed = tokensUsed; }
+        
+        public String getSearchStrategy() { return searchStrategy; }
+        public void setSearchStrategy(String searchStrategy) { this.searchStrategy = searchStrategy; }
+        
+        public double getSearchConfidence() { return searchConfidence; }
+        public void setSearchConfidence(double searchConfidence) { this.searchConfidence = searchConfidence; }
         
         public boolean isEmpty() {
             return fileSummaries.isEmpty() && codeChunks.isEmpty();
