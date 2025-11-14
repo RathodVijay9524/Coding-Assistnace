@@ -58,29 +58,19 @@ public class AIProviderConfig {
                 .build();
     }
 
-    // Local Ollama Embedding Model (Token-Free!)
-    @Bean
-    @Primary
-    public OllamaEmbeddingModel ollamaEmbeddingModel() {
-        logger.info("🚀 Creating LOCAL Ollama Embedding Model (nomic-embed-text) - NO TOKENS USED!");
-        return OllamaEmbeddingModel.builder()
-                .withModel("nomic-embed-text:latest")  // Your 274MB local model
-                .withBaseUrl("http://localhost:11434")
-                .build();
-    }
-
     // Code Understanding Vector Stores (Using Local Ollama!)
+    // Note: OllamaEmbeddingModel will be auto-configured by Spring AI from application.properties
     @Bean
     @Qualifier("summaryVectorStore")
     public VectorStore summaryVectorStore(OllamaEmbeddingModel embeddingModel) {
-        logger.info("Creating Summary Vector Store for code file summaries using LOCAL Ollama embeddings");
+        logger.info("🚀 Creating Summary Vector Store using LOCAL Ollama embeddings (nomic-embed-text) - NO TOKENS USED!");
         return SimpleVectorStore.builder(embeddingModel).build();
     }
 
     @Bean
     @Qualifier("chunkVectorStore") 
     public VectorStore chunkVectorStore(OllamaEmbeddingModel embeddingModel) {
-        logger.info("Creating Chunk Vector Store for code chunks using LOCAL Ollama embeddings");
+        logger.info("🚀 Creating Chunk Vector Store using LOCAL Ollama embeddings (nomic-embed-text) - NO TOKENS USED!");
         return SimpleVectorStore.builder(embeddingModel).build();
     }
 
@@ -166,24 +156,6 @@ public class AIProviderConfig {
                 .build();
     }
 
-    @Bean(name = "ollamaChatClient")
-    ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
-                                 ChatMemory chatMemory,
-                                KnowledgeGraphAdvisor knowledgeGraphAdvisor,
-                                ResponseSummarizerAdvisor summarizerAdvisor,
-                                SelfRefineEvaluationAdvisor refineAdvisor,
-                                AIAgentToolService aiAgentToolService) {
-        logger.info("Creating Ollama Chat Client with MCP tools");
-        return ChatClient.builder(ollamaChatModel)
-                .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
-                        knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
-                        summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
-                        refineAdvisor              // Brain 3: Reasoner (order: 1000)
-                )
-                .defaultTools(aiAgentToolService)
-                .build();
-    }
 
     @Bean(name = "haggingFaceChatClient")
     ChatClient huggingfaceChatClient(HuggingfaceChatModel huggingfaceChatModel,
