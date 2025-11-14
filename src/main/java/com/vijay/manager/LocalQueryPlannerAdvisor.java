@@ -51,6 +51,10 @@ public class LocalQueryPlannerAdvisor implements CallAdvisor {
                 logger.info("🧩 Brain 0: COMPLEX query - multiple intents detected");
             }
 
+            // Store planning results for memory tracking
+            logger.info("📊 Brain 0: Planning results - Strategy: {}, Confidence: {}, Intent: {}, Complexity: {}",
+                "local_" + analysis.intent.toLowerCase(), analysis.confidence, analysis.intent, analysis.complexity);
+
             return chain.nextCall(request);
             
         } catch (Exception e) {

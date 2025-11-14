@@ -1,15 +1,19 @@
 package com.vijay.config;
 
 import com.vijay.manager.ChainOfThoughtPlannerAdvisor;
+import com.vijay.manager.ConversationMemoryAdvisor;
 import com.vijay.manager.EnhancedContextBuilderAdvisor;
 import com.vijay.manager.EnhancedSelfRefineAdvisor;
+import com.vijay.manager.ErrorPredictionAdvisor;
 import com.vijay.manager.KnowledgeGraphAdvisor;
+import com.vijay.manager.LearningSystemAdvisor;
 import com.vijay.manager.LocalQueryPlannerAdvisor;
 import com.vijay.manager.MultiCriteriaJudgeAdvisor;
 import com.vijay.manager.QueryPlannerAdvisor;
 import com.vijay.manager.SmartQualityAdvisor;
 import com.vijay.manager.ResponseSummarizerAdvisor;
 import com.vijay.manager.SelfRefineEvaluationAdvisor;
+import com.vijay.manager.UserProfilingAdvisor;
 import com.vijay.tools.AIAgentToolService;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
@@ -80,16 +84,24 @@ public class AIProviderConfig {
     @Primary
     ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
                                ChatMemory chatMemory,
+                               ConversationMemoryAdvisor conversationMemory,
+                               UserProfilingAdvisor userProfilingAdvisor,
                                LocalQueryPlannerAdvisor localPlanner,
+                               ErrorPredictionAdvisor errorPredictionAdvisor,
                                KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                               LearningSystemAdvisor learningSystemAdvisor,
                                ResponseSummarizerAdvisor summarizerAdvisor,
                                AIAgentToolService aiAgentToolService) {
-        logger.info("🚀 Creating LOCAL OLLAMA Chat Client - NO TOKENS USED! Local Intelligence v3.1");
+        logger.info("🚀 Creating LOCAL OLLAMA Chat Client - Multi-Brain Architecture v5.0 (NO TOKENS!)");
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(
-                    MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
-                    localPlanner,              // Brain 0: Local Query Planner (order: 0) - NO TOKENS!
+                    conversationMemory,        // Brain Memory: Conversation Context (order: 1)
+                    MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
+                    userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
+                    localPlanner,              // Brain 0: Local Query Planner (order: 0)
+                    errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
                     knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
+                    learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
                     summarizerAdvisor          // Brain 2: Response Summarizer (order: 500)
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
@@ -100,19 +112,27 @@ public class AIProviderConfig {
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
                                 ChatMemory chatMemory,
+                                ConversationMemoryAdvisor conversationMemory,
+                                UserProfilingAdvisor userProfilingAdvisor,
                                 ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
+                                ErrorPredictionAdvisor errorPredictionAdvisor,
                                 KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                                LearningSystemAdvisor learningSystemAdvisor,
                                 ResponseSummarizerAdvisor summarizerAdvisor,
                                 MultiCriteriaJudgeAdvisor multiCriteriaJudge,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("Creating OpenAI Chat Client (Backup) with Human-Like Thinking Architecture v3.0");
+        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v5.0 (Brains 0-6)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
-                    MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
-                    chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0) - THINKS FIRST
+                    conversationMemory,        // Brain Memory: Conversation Context (order: 1)
+                    MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
+                    userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
+                    chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
+                    errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
                     knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
+                    learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
                     summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                    multiCriteriaJudge         // Brain 3: Multi-Criteria Judge (order: 1000) - VALIDATES LAST
+                    multiCriteriaJudge         // Brain 3: Multi-Criteria Judge (order: 1000)
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
