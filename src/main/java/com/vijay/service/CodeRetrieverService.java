@@ -19,18 +19,23 @@ public class CodeRetrieverService {
     private final VectorStore summaryStore;
     private final VectorStore chunkStore;
     private final DependencyGraphBuilder dependencyGraph;
+    private final ContextManager contextManager;
 
     public CodeRetrieverService(@Qualifier("summaryVectorStore") VectorStore summaryStore,
                                @Qualifier("chunkVectorStore") VectorStore chunkStore,
-                               DependencyGraphBuilder dependencyGraph) {
+                               DependencyGraphBuilder dependencyGraph,
+                               ContextManager contextManager) {
         this.summaryStore = summaryStore;
         this.chunkStore = chunkStore;
         this.dependencyGraph = dependencyGraph;
+        this.contextManager = contextManager;
     }
 
     public CodeContext retrieveCodeContext(String query) {
         logger.info("🔍 Brain 1 (Code Retriever): Searching for code context - '{}'", query);
         
+        // Step 0: Initialize token budget management
+        ContextManager.ContextBudget budget = contextManager.createBudget(query);
         CodeContext context = new CodeContext();
         
         try {
@@ -49,19 +54,28 @@ public class CodeRetrieverService {
                 return context;
             }
             
-            // Step 2: Expand using dependency graph
-            Set<String> allRelevantFiles = expandWithDependencies(fileSummaries, 2);
+            // Step 2: Expand using dependency graph with budget awareness
+            Set<String> allRelevantFiles = expandWithDependenciesAndBudget(fileSummaries, query, budget);
             logger.info("🔗 Expanded to {} files using dependency graph", allRelevantFiles.size());
+            logger.info("💰 Token Budget after expansion: {}/{} tokens ({:.1f}%)", 
+                budget.usedTokens, budget.maxTokens, budget.getUsagePercentage());
             
-            // Step 3: Get detailed code chunks for relevant files
-            List<Document> codeChunks = retrieveCodeChunks(query, allRelevantFiles);
+            // Step 3: Get detailed code chunks with budget management
+            List<Document> codeChunks = retrieveCodeChunksWithBudget(query, allRelevantFiles, budget);
             logger.info("🧩 Retrieved {} code chunks", codeChunks.size());
+            logger.info("💰 Final Token Budget: {}/{} tokens ({:.1f}%)", 
+                budget.usedTokens, budget.maxTokens, budget.getUsagePercentage());
+            
+            if (budget.isNearLimit()) {
+                logger.warn("⚠️ Context near token limit - consider reducing scope");
+            }
             
             // Step 4: Build context
             context.setFileSummaries(fileSummaries);
             context.setCodeChunks(codeChunks);
             context.setRelevantFiles(allRelevantFiles);
             context.setQuery(query);
+            context.setTokensUsed(budget.usedTokens);
             
             logger.info("✅ Brain 1 (Code Retriever): Context built successfully");
             
@@ -125,6 +139,85 @@ public class CodeRetrieverService {
         return allFiles;
     }
 
+    private Set<String> expandWithDependenciesAndBudget(List<Document> fileSummaries, String query, ContextManager.ContextBudget budget) {
+        Set<String> allFiles = new HashSet<>();
+        Set<String> visited = new HashSet<>();
+        Queue<String> toExplore = new LinkedList<>();
+        
+        // Start with initially found files
+        List<String> initialFiles = new ArrayList<>();
+        for (Document doc : fileSummaries) {
+            String filename = (String) doc.getMetadata().get("filename");
+            if (filename != null) {
+                initialFiles.add(filename);
+            }
+        }
+        
+        // Prioritize files by relevance before expansion
+        List<String> prioritizedFiles = contextManager.prioritizeFiles(initialFiles, query, budget);
+        
+        for (String filename : prioritizedFiles) {
+            allFiles.add(filename);
+            toExplore.add(filename);
+        }
+        
+        // Expand using dependency graph with budget awareness
+        int currentDepth = 0;
+        int maxDepth = budget.isNearLimit() ? 1 : 2; // Reduce depth if budget is tight
+        
+        while (!toExplore.isEmpty() && currentDepth < maxDepth && !budget.isOverLimit()) {
+            int levelSize = toExplore.size();
+            
+            for (int i = 0; i < levelSize && !budget.isOverLimit(); i++) {
+                String currentFile = toExplore.poll();
+                if (visited.contains(currentFile)) continue;
+                
+                visited.add(currentFile);
+                
+                // Get dependencies with relevance filtering
+                Set<String> dependencies = dependencyGraph.getDependencies(currentFile);
+                List<String> relevantDeps = contextManager.prioritizeFiles(
+                    new ArrayList<>(dependencies), query, budget);
+                
+                // Add only top relevant dependencies to avoid budget explosion
+                int maxDepsToAdd = budget.isNearLimit() ? 2 : 5;
+                int addedDeps = 0;
+                
+                for (String dep : relevantDeps) {
+                    if (!visited.contains(dep) && addedDeps < maxDepsToAdd) {
+                        allFiles.add(dep);
+                        toExplore.add(dep);
+                        addedDeps++;
+                    }
+                }
+                
+                // Get reverse dependencies (more selective)
+                Set<String> reverseDeps = dependencyGraph.getReverseDependencies(currentFile);
+                List<String> relevantReverseDeps = contextManager.prioritizeFiles(
+                    new ArrayList<>(reverseDeps), query, budget);
+                
+                // Add only top reverse dependencies
+                int maxReverseDepsToAdd = budget.isNearLimit() ? 1 : 3;
+                int addedReverseDeps = 0;
+                
+                for (String revDep : relevantReverseDeps) {
+                    if (!visited.contains(revDep) && addedReverseDeps < maxReverseDepsToAdd) {
+                        allFiles.add(revDep);
+                        toExplore.add(revDep);
+                        addedReverseDeps++;
+                    }
+                }
+            }
+            
+            currentDepth++;
+        }
+        
+        logger.debug("🔗 Budget-aware expansion: {} → {} files (depth: {}, budget: {:.1f}%)", 
+            fileSummaries.size(), allFiles.size(), currentDepth, budget.getUsagePercentage());
+        
+        return allFiles;
+    }
+
     private List<Document> retrieveCodeChunks(String query, Set<String> relevantFiles) {
         List<Document> allChunks = new ArrayList<>();
         
@@ -168,6 +261,80 @@ public class CodeRetrieverService {
         return allChunks.stream()
             .distinct()
             .limit(15)
+            .collect(Collectors.toList());
+    }
+
+    private List<Document> retrieveCodeChunksWithBudget(String query, Set<String> relevantFiles, ContextManager.ContextBudget budget) {
+        List<Document> allChunks = new ArrayList<>();
+        
+        // Search for chunks related to the query
+        int topK = budget.isNearLimit() ? 5 : 10; // Reduce if budget is tight
+        List<Document> queryChunks = chunkStore.similaritySearch(
+            SearchRequest.builder()
+                .query(query)
+                .topK(topK)
+                .build()
+        );
+        
+        // Filter chunks to only include those from relevant files
+        List<Document> filteredChunks = queryChunks.stream()
+            .filter(chunk -> {
+                String chunkFilename = (String) chunk.getMetadata().get("filename");
+                return relevantFiles.contains(chunkFilename);
+            })
+            .collect(Collectors.toList());
+        
+        // Convert to content strings for budget management
+        List<String> chunkContents = filteredChunks.stream()
+            .map(Document::getText)
+            .collect(Collectors.toList());
+        
+        // Apply budget management and pruning
+        List<String> prunedContents = contextManager.pruneContent(chunkContents, budget, query);
+        
+        // Convert back to Documents
+        for (int i = 0; i < Math.min(filteredChunks.size(), prunedContents.size()); i++) {
+            if (prunedContents.contains(filteredChunks.get(i).getText())) {
+                allChunks.add(filteredChunks.get(i));
+            }
+        }
+        
+        // If budget allows, get specific chunks for each relevant file (more selective)
+        if (!budget.isNearLimit()) {
+            int maxFilesToProcess = budget.isOverLimit() ? 3 : Math.min(5, relevantFiles.size());
+            int processedFiles = 0;
+            
+            for (String filename : relevantFiles) {
+                if (processedFiles >= maxFilesToProcess || budget.isOverLimit()) break;
+                
+                List<Document> fileChunks = chunkStore.similaritySearch(
+                    SearchRequest.builder()
+                        .query(filename + " " + query)
+                        .topK(2) // Reduced from 3
+                        .build()
+                );
+                
+                // Add chunks that aren't already included and fit in budget
+                for (Document chunk : fileChunks) {
+                    String chunkFilename = (String) chunk.getMetadata().get("filename");
+                    if (filename.equals(chunkFilename) && !allChunks.contains(chunk)) {
+                        if (contextManager.canAddContent(chunk.getText(), budget)) {
+                            allChunks.add(chunk);
+                            contextManager.addContent(chunk.getText(), budget);
+                        } else {
+                            logger.debug("🚫 Skipping chunk from {} - would exceed budget", filename);
+                            break; // Stop adding more chunks
+                        }
+                    }
+                }
+                processedFiles++;
+            }
+        }
+        
+        logger.info("📊 Chunk retrieval: {} chunks selected within budget", allChunks.size());
+        
+        return allChunks.stream()
+            .distinct()
             .collect(Collectors.toList());
     }
 
@@ -221,6 +388,7 @@ public class CodeRetrieverService {
         private List<Document> codeChunks = new ArrayList<>();
         private Set<String> relevantFiles = new HashSet<>();
         private String query;
+        private int tokensUsed = 0;
 
         // Getters and setters
         public List<Document> getFileSummaries() { return fileSummaries; }
@@ -234,6 +402,9 @@ public class CodeRetrieverService {
         
         public String getQuery() { return query; }
         public void setQuery(String query) { this.query = query; }
+        
+        public int getTokensUsed() { return tokensUsed; }
+        public void setTokensUsed(int tokensUsed) { this.tokensUsed = tokensUsed; }
         
         public boolean isEmpty() {
             return fileSummaries.isEmpty() && codeChunks.isEmpty();
