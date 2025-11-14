@@ -4,6 +4,11 @@ import com.vijay.manager.KnowledgeGraphAdvisor;
 import com.vijay.manager.ResponseSummarizerAdvisor;
 import com.vijay.manager.SelfRefineEvaluationAdvisor;
 import com.vijay.tools.AIAgentToolService;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.openai.OpenAiEmbeddingModel;
+import org.springframework.ai.vectorstore.SimpleVectorStore;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatModel;
@@ -16,6 +21,7 @@ import org.springframework.ai.huggingface.HuggingfaceChatModel;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -42,6 +48,21 @@ public class AIProviderConfig {
                     return "Tool execution failed: ";
                 })
                 .build();
+    }
+
+    // Code Understanding Vector Stores
+    @Bean
+    @Qualifier("summaryVectorStore")
+    public VectorStore summaryVectorStore(OpenAiEmbeddingModel embeddingModel) {
+        logger.info("Creating Summary Vector Store for code file summaries using OpenAI embeddings");
+        return SimpleVectorStore.builder(embeddingModel).build();
+    }
+
+    @Bean
+    @Qualifier("chunkVectorStore") 
+    public VectorStore chunkVectorStore(OpenAiEmbeddingModel embeddingModel) {
+        logger.info("Creating Chunk Vector Store for code chunks using OpenAI embeddings");
+        return SimpleVectorStore.builder(embeddingModel).build();
     }
 
     // OpenAI client with MCP tools
