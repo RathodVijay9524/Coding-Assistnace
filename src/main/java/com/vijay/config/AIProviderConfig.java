@@ -5,6 +5,7 @@ import com.vijay.manager.ConversationMemoryAdvisor;
 import com.vijay.manager.EmotionalContextAdvisor;
 import com.vijay.manager.EmotionalResponseAdvisor;
 import com.vijay.manager.EnhancedContextBuilderAdvisor;
+import com.vijay.manager.PersonalityAdvisor;
 import com.vijay.manager.TheoryOfMindAdvisor;
 import com.vijay.manager.EnhancedSelfRefineAdvisor;
 import com.vijay.manager.ErrorPredictionAdvisor;
@@ -90,6 +91,7 @@ public class AIProviderConfig {
                                EmotionalContextAdvisor emotionalContextAdvisor,
                                EmotionalResponseAdvisor emotionalResponseAdvisor,
                                TheoryOfMindAdvisor theoryOfMindAdvisor,
+                               PersonalityAdvisor personalityAdvisor,
                                ConversationMemoryAdvisor conversationMemory,
                                UserProfilingAdvisor userProfilingAdvisor,
                                LocalQueryPlannerAdvisor localPlanner,
@@ -111,7 +113,8 @@ public class AIProviderConfig {
                     knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
                     learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
                     summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                    emotionalResponseAdvisor   // Brain 7: Emotional Response (order: 750) ⭐ NEW
+                    emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ NEW
+                    personalityAdvisor         // Brain 9: Personality (order: 800) ⭐ NEW
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
@@ -124,6 +127,7 @@ public class AIProviderConfig {
                                 EmotionalContextAdvisor emotionalContextAdvisor,
                                 EmotionalResponseAdvisor emotionalResponseAdvisor,
                                 TheoryOfMindAdvisor theoryOfMindAdvisor,
+                                PersonalityAdvisor personalityAdvisor,
                                 ConversationMemoryAdvisor conversationMemory,
                                 UserProfilingAdvisor userProfilingAdvisor,
                                 ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
@@ -133,7 +137,7 @@ public class AIProviderConfig {
                                 ResponseSummarizerAdvisor summarizerAdvisor,
                                 MultiCriteriaJudgeAdvisor multiCriteriaJudge,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v5.0 (Brains 0-8)");
+        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v5.0 (Brains 0-9)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
                     chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
@@ -147,6 +151,7 @@ public class AIProviderConfig {
                     learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
                     summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
                     emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ NEW
+                    personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ NEW
                     multiCriteriaJudge         // Brain 3: Multi-Criteria Judge (order: 1000)
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
