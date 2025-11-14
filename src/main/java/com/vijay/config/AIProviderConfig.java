@@ -10,6 +10,7 @@ import com.vijay.manager.EnhancedContextBuilderAdvisor;
 import com.vijay.manager.LearningGrowthAdvisor;
 import com.vijay.manager.PersonalityAdvisor;
 import com.vijay.manager.TheoryOfMindAdvisor;
+import com.vijay.manager.ThoughtStreamAdvisor;
 import com.vijay.manager.EnhancedSelfRefineAdvisor;
 import com.vijay.manager.ErrorPredictionAdvisor;
 import com.vijay.manager.KnowledgeGraphAdvisor;
@@ -91,6 +92,7 @@ public class AIProviderConfig {
     @Primary
     ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
                                ChatMemory chatMemory,
+                               ThoughtStreamAdvisor thoughtStreamAdvisor,
                                EmotionalContextAdvisor emotionalContextAdvisor,
                                EmotionalResponseAdvisor emotionalResponseAdvisor,
                                TheoryOfMindAdvisor theoryOfMindAdvisor,
@@ -106,9 +108,10 @@ public class AIProviderConfig {
                                LearningSystemAdvisor learningSystemAdvisor,
                                ResponseSummarizerAdvisor summarizerAdvisor,
                                AIAgentToolService aiAgentToolService) {
-        logger.info("🚀 Creating LOCAL OLLAMA Chat Client - Multi-Brain Architecture v5.0 (NO TOKENS!)");
+        logger.info("🚀 Creating LOCAL OLLAMA Chat Client - Multi-Brain Architecture v6.0 (Thought Stream + Working Memory)");
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(
+                    thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ NEW - Cursor System
                     localPlanner,              // Brain 0: Local Query Planner (order: 0)
                     emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
                     conversationMemory,        // Brain Memory: Conversation Context (order: 1)
@@ -123,7 +126,7 @@ public class AIProviderConfig {
                     personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
                     cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
                     advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
-                    learningGrowthAdvisor      // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5 NEW
+                    learningGrowthAdvisor      // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
@@ -133,6 +136,7 @@ public class AIProviderConfig {
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
                                 ChatMemory chatMemory,
+                                ThoughtStreamAdvisor thoughtStreamAdvisor,
                                 EmotionalContextAdvisor emotionalContextAdvisor,
                                 EmotionalResponseAdvisor emotionalResponseAdvisor,
                                 TheoryOfMindAdvisor theoryOfMindAdvisor,
@@ -149,9 +153,10 @@ public class AIProviderConfig {
                                 ResponseSummarizerAdvisor summarizerAdvisor,
                                 MultiCriteriaJudgeAdvisor multiCriteriaJudge,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v5.0 (Brains 0-12)");
+        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v6.0 (Thought Stream + Working Memory)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
+                    thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ NEW - Cursor System
                     chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
                     emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
                     conversationMemory,        // Brain Memory: Conversation Context (order: 1)
@@ -166,7 +171,7 @@ public class AIProviderConfig {
                     personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
                     cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
                     advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
-                    learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5 NEW
+                    learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
                     multiCriteriaJudge         // Brain 3: Multi-Criteria Judge (order: 1000)
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
