@@ -2,7 +2,10 @@ package com.vijay.config;
 
 import com.vijay.manager.ChainOfThoughtPlannerAdvisor;
 import com.vijay.manager.ConversationMemoryAdvisor;
+import com.vijay.manager.EmotionalContextAdvisor;
+import com.vijay.manager.EmotionalResponseAdvisor;
 import com.vijay.manager.EnhancedContextBuilderAdvisor;
+import com.vijay.manager.TheoryOfMindAdvisor;
 import com.vijay.manager.EnhancedSelfRefineAdvisor;
 import com.vijay.manager.ErrorPredictionAdvisor;
 import com.vijay.manager.KnowledgeGraphAdvisor;
@@ -84,6 +87,9 @@ public class AIProviderConfig {
     @Primary
     ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
                                ChatMemory chatMemory,
+                               EmotionalContextAdvisor emotionalContextAdvisor,
+                               EmotionalResponseAdvisor emotionalResponseAdvisor,
+                               TheoryOfMindAdvisor theoryOfMindAdvisor,
                                ConversationMemoryAdvisor conversationMemory,
                                UserProfilingAdvisor userProfilingAdvisor,
                                LocalQueryPlannerAdvisor localPlanner,
@@ -95,14 +101,17 @@ public class AIProviderConfig {
         logger.info("🚀 Creating LOCAL OLLAMA Chat Client - Multi-Brain Architecture v5.0 (NO TOKENS!)");
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(
+                    localPlanner,              // Brain 0: Local Query Planner (order: 0)
+                    emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ NEW
                     conversationMemory,        // Brain Memory: Conversation Context (order: 1)
                     MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
+                    theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ NEW
                     userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
-                    localPlanner,              // Brain 0: Local Query Planner (order: 0)
                     errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
                     knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
                     learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
-                    summarizerAdvisor          // Brain 2: Response Summarizer (order: 500)
+                    summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
+                    emotionalResponseAdvisor   // Brain 7: Emotional Response (order: 750) ⭐ NEW
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
@@ -112,6 +121,9 @@ public class AIProviderConfig {
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
                                 ChatMemory chatMemory,
+                                EmotionalContextAdvisor emotionalContextAdvisor,
+                                EmotionalResponseAdvisor emotionalResponseAdvisor,
+                                TheoryOfMindAdvisor theoryOfMindAdvisor,
                                 ConversationMemoryAdvisor conversationMemory,
                                 UserProfilingAdvisor userProfilingAdvisor,
                                 ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
@@ -121,17 +133,20 @@ public class AIProviderConfig {
                                 ResponseSummarizerAdvisor summarizerAdvisor,
                                 MultiCriteriaJudgeAdvisor multiCriteriaJudge,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v5.0 (Brains 0-6)");
+        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v5.0 (Brains 0-8)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
+                    chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
+                    emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ NEW
                     conversationMemory,        // Brain Memory: Conversation Context (order: 1)
                     MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
+                    theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ NEW
                     userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
-                    chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
                     errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
                     knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
                     learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
                     summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
+                    emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ NEW
                     multiCriteriaJudge         // Brain 3: Multi-Criteria Judge (order: 1000)
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
