@@ -21,6 +21,7 @@ import com.vijay.manager.QueryPlannerAdvisor;
 import com.vijay.manager.SmartQualityAdvisor;
 import com.vijay.manager.ResponseSummarizerAdvisor;
 import com.vijay.manager.SelfRefineEvaluationAdvisor;
+import com.vijay.manager.SelfRefineV3Advisor;
 import com.vijay.manager.UserProfilingAdvisor;
 import com.vijay.tools.AIAgentToolService;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -107,11 +108,12 @@ public class AIProviderConfig {
                                KnowledgeGraphAdvisor knowledgeGraphAdvisor,
                                LearningSystemAdvisor learningSystemAdvisor,
                                ResponseSummarizerAdvisor summarizerAdvisor,
+                               SelfRefineV3Advisor selfRefineV3Advisor,
                                AIAgentToolService aiAgentToolService) {
-        logger.info("🚀 Creating LOCAL OLLAMA Chat Client - Multi-Brain Architecture v6.0 (Thought Stream + Working Memory)");
+        logger.info("🚀 Creating LOCAL OLLAMA Chat Client - Multi-Brain Architecture v7.0 (Supervisor Brain + Self-Refine V3)");
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(
-                    thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ NEW - Cursor System
+                    thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ Phase 6
                     localPlanner,              // Brain 0: Local Query Planner (order: 0)
                     emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
                     conversationMemory,        // Brain Memory: Conversation Context (order: 1)
@@ -126,7 +128,8 @@ public class AIProviderConfig {
                     personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
                     cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
                     advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
-                    learningGrowthAdvisor      // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
+                    learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
+                    selfRefineV3Advisor        // Brain 13: Self-Refine V3 (order: 1000) ⭐ Phase 7
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
@@ -151,12 +154,12 @@ public class AIProviderConfig {
                                 KnowledgeGraphAdvisor knowledgeGraphAdvisor,
                                 LearningSystemAdvisor learningSystemAdvisor,
                                 ResponseSummarizerAdvisor summarizerAdvisor,
-                                MultiCriteriaJudgeAdvisor multiCriteriaJudge,
+                                SelfRefineV3Advisor selfRefineV3Advisor,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v6.0 (Thought Stream + Working Memory)");
+        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v7.0 (Supervisor Brain + Self-Refine V3)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
-                    thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ NEW - Cursor System
+                    thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ Phase 6
                     chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
                     emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
                     conversationMemory,        // Brain Memory: Conversation Context (order: 1)
@@ -172,7 +175,7 @@ public class AIProviderConfig {
                     cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
                     advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
                     learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
-                    multiCriteriaJudge         // Brain 3: Multi-Criteria Judge (order: 1000)
+                    selfRefineV3Advisor        // Brain 13: Self-Refine V3 (order: 1000) ⭐ Phase 7
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
