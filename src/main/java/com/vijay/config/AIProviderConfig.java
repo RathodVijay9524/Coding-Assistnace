@@ -188,17 +188,43 @@ public class AIProviderConfig {
     @Bean(name = "anthropicChatClient")
     ChatClient anthropicChatClient(AnthropicChatModel anthropicChatModel,
                                    ChatMemory chatMemory,
+                                   ThoughtStreamAdvisor thoughtStreamAdvisor,
+                                   EmotionalContextAdvisor emotionalContextAdvisor,
+                                   EmotionalResponseAdvisor emotionalResponseAdvisor,
+                                   TheoryOfMindAdvisor theoryOfMindAdvisor,
+                                   PersonalityAdvisor personalityAdvisor,
+                                   CognitiveBiasAdvisor cognitiveBiasAdvisor,
+                                   AdvancedCapabilitiesAdvisor advancedCapabilitiesAdvisor,
+                                   LearningGrowthAdvisor learningGrowthAdvisor,
+                                   ConversationMemoryAdvisor conversationMemory,
+                                   UserProfilingAdvisor userProfilingAdvisor,
+                                   ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
+                                   ErrorPredictionAdvisor errorPredictionAdvisor,
                                    KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                                   LearningSystemAdvisor learningSystemAdvisor,
                                    ResponseSummarizerAdvisor summarizerAdvisor,
-                                   SelfRefineEvaluationAdvisor refineAdvisor,
+                                   SelfRefineV3Advisor selfRefineV3Advisor,
                                    AIAgentToolService aiAgentToolService) {
         logger.info("Creating Anthropic Chat Client with MCP tools");
         return ChatClient.builder(anthropicChatModel)
                 .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
-                        knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
-                        summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
-                        refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                        thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ Phase 6
+                        chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
+                        emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
+                        conversationMemory,        // Brain Memory: Conversation Context (order: 1)
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
+                        theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ Phase 3
+                        userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
+                        errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
+                        knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
+                        learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
+                        summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
+                        emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ Phase 3
+                        personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
+                        cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
+                        advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
+                        learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
+                        selfRefineV3Advisor        // Brain 13: Self-Refine V3 (order: 1000) ⭐ Phase 7
                 )
                 .defaultTools(aiAgentToolService)
                 .build();
@@ -207,17 +233,43 @@ public class AIProviderConfig {
     @Bean(name = "googleChatClient")
     ChatClient geminChatClient(GoogleGenAiChatModel googleGenAiChatModel,
                                ChatMemory chatMemory,
+                               ThoughtStreamAdvisor thoughtStreamAdvisor,
+                               EmotionalContextAdvisor emotionalContextAdvisor,
+                               EmotionalResponseAdvisor emotionalResponseAdvisor,
+                               TheoryOfMindAdvisor theoryOfMindAdvisor,
+                               PersonalityAdvisor personalityAdvisor,
+                               CognitiveBiasAdvisor cognitiveBiasAdvisor,
+                               AdvancedCapabilitiesAdvisor advancedCapabilitiesAdvisor,
+                               LearningGrowthAdvisor learningGrowthAdvisor,
+                               ConversationMemoryAdvisor conversationMemory,
+                               UserProfilingAdvisor userProfilingAdvisor,
+                               ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
+                               ErrorPredictionAdvisor errorPredictionAdvisor,
                                KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                               LearningSystemAdvisor learningSystemAdvisor,
                                ResponseSummarizerAdvisor summarizerAdvisor,
-                               SelfRefineEvaluationAdvisor refineAdvisor,
+                               SelfRefineV3Advisor selfRefineV3Advisor,
                                AIAgentToolService aiAgentToolService) {
         logger.info("Creating google Chat Client with MCP tools");
         return ChatClient.builder(googleGenAiChatModel)
                 .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
-                        knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
-                        summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
-                        refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                        thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ Phase 6
+                        chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
+                        emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
+                        conversationMemory,        // Brain Memory: Conversation Context (order: 1)
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
+                        theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ Phase 3
+                        userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
+                        errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
+                        knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
+                        learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
+                        summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
+                        emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ Phase 3
+                        personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
+                        cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
+                        advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
+                        learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
+                        selfRefineV3Advisor        // Brain 13: Self-Refine V3 (order: 1000) ⭐ Phase 7
                 )
                 .defaultTools(aiAgentToolService)
                 .build();
@@ -226,11 +278,19 @@ public class AIProviderConfig {
 
     @Bean(name = "haggingFaceChatClient")
     ChatClient huggingfaceChatClient(HuggingfaceChatModel huggingfaceChatModel,
-                                ChatMemory chatMemory,
+                                     ChatMemory chatMemory,
+                                     KnowledgeGraphAdvisor knowledgeGraphAdvisor,
+                                     ResponseSummarizerAdvisor summarizerAdvisor,
+                                     SelfRefineEvaluationAdvisor refineAdvisor,
                                      AIAgentToolService aiAgentToolService) {
         logger.info("Creating HaggingFace Chat Client with MCP tools");
         return ChatClient.builder(huggingfaceChatModel)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
+                        knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
+                        summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
+                        refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                )
                 .defaultTools(aiAgentToolService)
                 .build();
     }
