@@ -240,7 +240,6 @@ public class AIProviderConfig {
     /**
      * Initialize Phase 8 services for incremental indexing
      */
-    @Bean
     public void initializePhase8Services(FileHashTracker fileHashTracker,
                                         IncrementalIndexer incrementalIndexer,
                                         IncrementalSummarizer incrementalSummarizer,
