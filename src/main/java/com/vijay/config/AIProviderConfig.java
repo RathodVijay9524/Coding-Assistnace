@@ -7,6 +7,7 @@ import com.vijay.manager.ConversationMemoryAdvisor;
 import com.vijay.manager.EmotionalContextAdvisor;
 import com.vijay.manager.EmotionalResponseAdvisor;
 import com.vijay.manager.EnhancedContextBuilderAdvisor;
+import com.vijay.manager.LearningGrowthAdvisor;
 import com.vijay.manager.PersonalityAdvisor;
 import com.vijay.manager.TheoryOfMindAdvisor;
 import com.vijay.manager.EnhancedSelfRefineAdvisor;
@@ -96,6 +97,7 @@ public class AIProviderConfig {
                                PersonalityAdvisor personalityAdvisor,
                                CognitiveBiasAdvisor cognitiveBiasAdvisor,
                                AdvancedCapabilitiesAdvisor advancedCapabilitiesAdvisor,
+                               LearningGrowthAdvisor learningGrowthAdvisor,
                                ConversationMemoryAdvisor conversationMemory,
                                UserProfilingAdvisor userProfilingAdvisor,
                                LocalQueryPlannerAdvisor localPlanner,
@@ -108,19 +110,20 @@ public class AIProviderConfig {
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(
                     localPlanner,              // Brain 0: Local Query Planner (order: 0)
-                    emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ NEW
+                    emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
                     conversationMemory,        // Brain Memory: Conversation Context (order: 1)
                     MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
-                    theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ NEW
+                    theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ Phase 3
                     userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
                     errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
                     knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
                     learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
                     summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                    emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ NEW
-                    personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ NEW
-                    cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ NEW
-                    advancedCapabilitiesAdvisor // Brain 11: Advanced Capabilities (order: 900) ⭐ NEW
+                    emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ Phase 3
+                    personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
+                    cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
+                    advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
+                    learningGrowthAdvisor      // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5 NEW
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
@@ -136,6 +139,7 @@ public class AIProviderConfig {
                                 PersonalityAdvisor personalityAdvisor,
                                 CognitiveBiasAdvisor cognitiveBiasAdvisor,
                                 AdvancedCapabilitiesAdvisor advancedCapabilitiesAdvisor,
+                                LearningGrowthAdvisor learningGrowthAdvisor,
                                 ConversationMemoryAdvisor conversationMemory,
                                 UserProfilingAdvisor userProfilingAdvisor,
                                 ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
@@ -145,23 +149,24 @@ public class AIProviderConfig {
                                 ResponseSummarizerAdvisor summarizerAdvisor,
                                 MultiCriteriaJudgeAdvisor multiCriteriaJudge,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v5.0 (Brains 0-11)");
+        logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v5.0 (Brains 0-12)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
                     chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
-                    emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ NEW
+                    emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
                     conversationMemory,        // Brain Memory: Conversation Context (order: 1)
                     MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
-                    theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ NEW
+                    theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ Phase 3
                     userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
                     errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
                     knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
                     learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
                     summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                    emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ NEW
-                    personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ NEW
-                    cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ NEW
-                    advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ NEW
+                    emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ Phase 3
+                    personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
+                    cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
+                    advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
+                    learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5 NEW
                     multiCriteriaJudge         // Brain 3: Multi-Criteria Judge (order: 1000)
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
