@@ -9,6 +9,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -49,22 +50,52 @@ public class ChatService {
             String[] toolsUsed = new String[0];
 
             if (request.isUseTools()) {
-                // Find required tools using RAG
-                List<String> requiredToolNames = toolFinderService.findToolsFor(request.getMessage());
-                logger.info("Tools activated for provider {}: {}", provider, requiredToolNames);
-
-                // Check if this is a code-related question (Brain 1: Code Retriever)
+                // Smart brain activation based on query intent
                 String codeContext = "";
-                if (isCodeRelatedQuery(request.getMessage())) {
-                    CodeRetrieverService.CodeContext context = codeRetrieverService.retrieveCodeContext(request.getMessage());
-                    if (!context.isEmpty()) {
-                        codeContext = "\n\n📋 **Code Context from your codebase:**\n" + context.getFormattedContext();
-                    }
+                List<String> requiredToolNames = new ArrayList<>();
+                
+                // Determine query intent (this will be set by QueryPlannerAdvisor)
+                String queryIntent = getQueryIntent(request.getMessage());
+                logger.info("🎯 Query Intent: {}", queryIntent);
+                
+                switch (queryIntent) {
+                    case "CODE":
+                        logger.info("🧠 Activating Brain 1 (Code Retriever) only");
+                        CodeRetrieverService.CodeContext context = codeRetrieverService.retrieveCodeContext(request.getMessage());
+                        if (!context.isEmpty()) {
+                            codeContext = "\n\n📋 **Code Context from your codebase:**\n" + context.getFormattedContext();
+                        }
+                        // No tools needed for code queries
+                        break;
+                        
+                    case "TOOLS":
+                        logger.info("🧠 Activating Brain 0 (Tool Finder) only");
+                        requiredToolNames = toolFinderService.findToolsFor(request.getMessage());
+                        logger.info("Tools activated for provider {}: {}", provider, requiredToolNames);
+                        // No code context needed for tool queries
+                        break;
+                        
+                    case "GENERAL":
+                        logger.info("🧠 General chat mode - no special brains activated");
+                        // Neither tools nor code context needed
+                        break;
+                        
+                    default:
+                        // Fallback to old behavior if intent detection fails
+                        logger.info("🧠 Fallback: Activating both brains");
+                        requiredToolNames = toolFinderService.findToolsFor(request.getMessage());
+                        if (isCodeRelatedQuery(request.getMessage())) {
+                            CodeRetrieverService.CodeContext fallbackContext = codeRetrieverService.retrieveCodeContext(request.getMessage());
+                            if (!fallbackContext.isEmpty()) {
+                                codeContext = "\n\n📋 **Code Context from your codebase:**\n" + fallbackContext.getFormattedContext();
+                            }
+                        }
+                        break;
                 }
                 
                 toolsUsed = requiredToolNames.toArray(new String[0]);
                 
-                // Build the enhanced prompt with code context
+                // Build the enhanced prompt with appropriate context
                 String enhancedMessage = request.getMessage() + codeContext;
                 
                 // Since ChatClients from AIProviderConfig already have default tools,
@@ -151,5 +182,39 @@ public class ChatService {
                lowerMessage.contains("class") ||
                lowerMessage.contains("method") ||
                lowerMessage.contains("function");
+    }
+
+    private String getQueryIntent(String message) {
+        // Simple intent detection - this will be enhanced by QueryPlannerAdvisor
+        String lowerMessage = message.toLowerCase();
+        
+        // Code-related patterns
+        if (lowerMessage.contains("chatservice") || lowerMessage.contains("aiproviderconfig") ||
+            lowerMessage.contains("advisor") || lowerMessage.contains("how does") ||
+            lowerMessage.contains("show me") || lowerMessage.contains("explain") ||
+            lowerMessage.contains("architecture") || lowerMessage.contains("code") ||
+            lowerMessage.contains("class") || lowerMessage.contains("method") ||
+            lowerMessage.contains("service") || lowerMessage.contains("config")) {
+            return "CODE";
+        }
+        
+        // Tool-related patterns
+        if (lowerMessage.contains("weather") || lowerMessage.contains("calendar") ||
+            lowerMessage.contains("meeting") || lowerMessage.contains("schedule") ||
+            lowerMessage.contains("search") || lowerMessage.contains("email") ||
+            lowerMessage.contains("time") || lowerMessage.contains("date") ||
+            lowerMessage.contains("forecast") || lowerMessage.contains("temperature")) {
+            return "TOOLS";
+        }
+        
+        // General conversation patterns
+        if (lowerMessage.contains("hello") || lowerMessage.contains("hi") ||
+            lowerMessage.contains("hey") || lowerMessage.contains("how are you") ||
+            lowerMessage.contains("what can you do") || lowerMessage.contains("help")) {
+            return "GENERAL";
+        }
+        
+        // Default fallback
+        return "UNKNOWN";
     }
 }

@@ -1,6 +1,10 @@
 package com.vijay.config;
 
+import com.vijay.manager.EnhancedContextBuilderAdvisor;
+import com.vijay.manager.EnhancedSelfRefineAdvisor;
 import com.vijay.manager.KnowledgeGraphAdvisor;
+import com.vijay.manager.QueryPlannerAdvisor;
+import com.vijay.manager.SmartQualityAdvisor;
 import com.vijay.manager.ResponseSummarizerAdvisor;
 import com.vijay.manager.SelfRefineEvaluationAdvisor;
 import com.vijay.tools.AIAgentToolService;
@@ -70,19 +74,21 @@ public class AIProviderConfig {
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
                                 ChatMemory chatMemory,
+                                QueryPlannerAdvisor queryPlannerAdvisor,
                                 KnowledgeGraphAdvisor knowledgeGraphAdvisor,
                                 ResponseSummarizerAdvisor summarizerAdvisor,
                                 SelfRefineEvaluationAdvisor refineAdvisor,
                                 AIAgentToolService aiAgentToolService) {
-        logger.info("Creating OpenAI Chat Client with Multi-Brain Architecture");
+        logger.info("Creating OpenAI Chat Client with Working Multi-Brain Architecture v2.2");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
                     MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
-                    knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
-                    summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
-                    refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                    queryPlannerAdvisor,       // Brain 0: Query Planner (order: 0) - RUNS FIRST
+                    knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
+                    summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
+                    refineAdvisor              // Brain 3: Self-Refine (order: 1000)
                 )
-                .defaultTools(aiAgentToolService)  // Brain 1: Retriever (tools)
+                .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
     }
 
