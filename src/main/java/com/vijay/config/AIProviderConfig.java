@@ -23,6 +23,10 @@ import com.vijay.manager.ResponseSummarizerAdvisor;
 import com.vijay.manager.SelfRefineEvaluationAdvisor;
 import com.vijay.manager.SelfRefineV3Advisor;
 import com.vijay.manager.UserProfilingAdvisor;
+import com.vijay.service.FileHashTracker;
+import com.vijay.service.IncrementalIndexer;
+import com.vijay.service.IncrementalSummarizer;
+import com.vijay.service.IncrementalGraphCalculator;
 import com.vijay.tools.AIAgentToolService;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
@@ -231,5 +235,22 @@ public class AIProviderConfig {
                 .build();
     }
 
+    // ============ PHASE 8: INCREMENTAL INDEXING SERVICES ============
+
+    /**
+     * Initialize Phase 8 services for incremental indexing
+     */
+    @Bean
+    public void initializePhase8Services(FileHashTracker fileHashTracker,
+                                        IncrementalIndexer incrementalIndexer,
+                                        IncrementalSummarizer incrementalSummarizer,
+                                        IncrementalGraphCalculator incrementalGraphCalculator) {
+        logger.info("🚀 Initializing Phase 8: Incremental Indexing Services");
+        logger.info("   ✅ FileHashTracker - File change detection");
+        logger.info("   ✅ IncrementalIndexer - Incremental chunk indexing");
+        logger.info("   ✅ IncrementalSummarizer - Incremental summarization");
+        logger.info("   ✅ IncrementalGraphCalculator - Incremental graph updates");
+        logger.info("🎯 Phase 8 Services Ready!");
+    }
 
 }
