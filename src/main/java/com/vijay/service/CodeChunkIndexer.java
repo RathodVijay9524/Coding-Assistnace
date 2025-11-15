@@ -30,17 +30,42 @@ public class CodeChunkIndexer {
     private static final Logger logger = LoggerFactory.getLogger(CodeChunkIndexer.class);
     
     private final VectorStore chunkStore;
+    private final EmbeddingCacheManager cacheManager;
     private final JavaParser javaParser = new JavaParser();
     private final ExecutorService executorService = Executors.newFixedThreadPool(2);
 
-    public CodeChunkIndexer(@Qualifier("chunkVectorStore") VectorStore chunkStore) {
+    public CodeChunkIndexer(@Qualifier("chunkVectorStore") VectorStore chunkStore,
+                           EmbeddingCacheManager cacheManager) {
         this.chunkStore = chunkStore;
+        this.cacheManager = cacheManager;
     }
 
     @PostConstruct
     public void indexCodeChunks() {
         logger.info("🧩 Starting code chunk indexing...");
         
+        // Check if cache is valid - skip embedding if documents haven't changed
+        String documentsHash = null;
+        try {
+            Path srcPath = Paths.get("src/main/java");
+            List<String> javaFiles = Files.walk(srcPath)
+                .filter(path -> path.toString().endsWith(".java"))
+                .filter(path -> !path.toString().contains("test"))
+                .map(Path::toString)
+                .toList();
+            
+            documentsHash = cacheManager.calculateDocumentsHash(javaFiles);
+            if (cacheManager.isCacheValid(documentsHash)) {
+                logger.info("✅ Cache is valid - SKIPPING chunk re-embedding (fast startup!)");
+                return;
+            }
+            
+            logger.info("🔄 Cache invalid or missing - re-embedding chunks...");
+        } catch (Exception e) {
+            logger.warn("⚠️ Could not check cache, proceeding with indexing: {}", e.getMessage());
+        }
+        
+        final String finalHash = documentsHash;
         CompletableFuture.runAsync(() -> {
             try {
                 Path srcPath = Paths.get("src/main/java");
@@ -68,6 +93,12 @@ public class CodeChunkIndexer {
                     }
 
                     logger.info("✅ Code chunk indexing completed! {} chunks created", totalChunks);
+                    
+                    // Save cache after successful embedding
+                    if (finalHash != null) {
+                        cacheManager.saveToCache(chunkStore, finalHash);
+                        logger.info("💾 Chunk cache saved for future startups");
+                    }
                 }
                 
             } catch (Exception e) {

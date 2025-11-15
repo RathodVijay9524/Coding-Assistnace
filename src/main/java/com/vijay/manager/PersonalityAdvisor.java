@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
  * Execution Order: 800 (Late, after response generation but before final evaluation)
  */
 @Component
-public class PersonalityAdvisor implements CallAdvisor {
+public class PersonalityAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(PersonalityAdvisor.class);
     
@@ -42,6 +42,17 @@ public class PersonalityAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 800; // Execute late, after response generation
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "personalityAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Applies consistent personality traits (MENTOR), maintains character consistency across conversations, expresses values and principles";
     }
     
     @Override

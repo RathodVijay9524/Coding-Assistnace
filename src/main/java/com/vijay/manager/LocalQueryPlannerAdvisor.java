@@ -10,7 +10,7 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Component;
 
 @Component
-public class LocalQueryPlannerAdvisor implements CallAdvisor {
+public class LocalQueryPlannerAdvisor implements CallAdvisor, IAgentBrain {
 
     private static final Logger logger = LoggerFactory.getLogger(LocalQueryPlannerAdvisor.class);
 
@@ -22,6 +22,17 @@ public class LocalQueryPlannerAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 0; // Run FIRST - local planning without token usage
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "localQueryPlannerAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Plans query execution locally, analyzes intent and decides what cognitive functions to use without token consumption";
     }
 
     @Override

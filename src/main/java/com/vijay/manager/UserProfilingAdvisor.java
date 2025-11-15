@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
  * Execution Order: 2 (Early, after memory, to adapt behavior for this user)
  */
 @Component
-public class UserProfilingAdvisor implements CallAdvisor {
+public class UserProfilingAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(UserProfilingAdvisor.class);
     
@@ -41,7 +41,18 @@ public class UserProfilingAdvisor implements CallAdvisor {
     
     @Override
     public int getOrder() {
-        return 2; // Execute early to adapt behavior for this user
+        return 5; // Execute early to adapt behavior for this user
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "userProfilingAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Builds and maintains user profile, remembers preferences and communication style, adapts responses based on user expertise and history";
     }
     
     @Override

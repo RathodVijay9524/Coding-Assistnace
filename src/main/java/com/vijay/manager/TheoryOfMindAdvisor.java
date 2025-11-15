@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
  * Execution Order: 3 (Early, after emotional context, to understand user's mind)
  */
 @Component
-public class TheoryOfMindAdvisor implements CallAdvisor {
+public class TheoryOfMindAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(TheoryOfMindAdvisor.class);
     
@@ -44,6 +44,17 @@ public class TheoryOfMindAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 3; // Execute early, after emotional context
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "theoryOfMindAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Infers user mental state and knowledge level, detects confusion and expertise areas, predicts user needs and learning style";
     }
     
     @Override

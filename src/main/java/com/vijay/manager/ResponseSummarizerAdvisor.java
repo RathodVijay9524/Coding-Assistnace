@@ -10,7 +10,7 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ResponseSummarizerAdvisor implements CallAdvisor {
+public class ResponseSummarizerAdvisor implements CallAdvisor, IAgentBrain {
 
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
@@ -87,5 +87,16 @@ public class ResponseSummarizerAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 500; // Execute before SelfRefineEvaluationAdvisor (1000)
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "responseSummarizerAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Summarizes and condenses responses, extracts key information, formats output for clarity and readability";
     }
 }

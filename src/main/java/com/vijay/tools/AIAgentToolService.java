@@ -89,19 +89,19 @@ public class AIAgentToolService implements AiToolProvider {
     }
 
     // --- TOOL 2: "add" (Corrected) ---
-    // Changed from a Function-returning method to a normal method.
+    // Flattened parameters so Spring AI generates correct schema: {"a": 2, "b": 10}
     @Tool(description ="Adds two numbers together.")
-    public AddResponse add(AddRequest request) {
-        System.out.println("--- TOOL CALLED: add(" + request.a() + ", " + request.b() + ") ---");
-        return new AddResponse(request.a() + request.b());
+    public int add(int a, int b) {
+        System.out.println("--- TOOL CALLED: add(" + a + ", " + b + ") ---");
+        return a + b;
     }
 
     // --- TOOL 3: "multiply" (Corrected) ---
-    // Changed from a Function-returning method to a normal method.
+    // Flattened parameters so Spring AI generates correct schema: {"a": 2, "b": 10}
     @Tool(description ="Multiplies two numbers together.")
-    public MultiplyResponse multiply(MultiplyRequest request) {
-        System.out.println("--- TOOL CALLED: multiply(" + request.a() + ", " + request.b() + ") ---");
-        return new MultiplyResponse(request.a() * request.b());
+    public int multiply(int a, int b) {
+        System.out.println("--- TOOL CALLED: multiply(" + a + ", " + b + ") ---");
+        return a * b;
     }
 
     // --- TOOL 4: Normal Method ---

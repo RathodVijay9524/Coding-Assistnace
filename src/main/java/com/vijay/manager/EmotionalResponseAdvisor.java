@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
  * Execution Order: 750 (Late, after response generation but before final evaluation)
  */
 @Component
-public class EmotionalResponseAdvisor implements CallAdvisor {
+public class EmotionalResponseAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(EmotionalResponseAdvisor.class);
     
@@ -47,6 +47,17 @@ public class EmotionalResponseAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 750; // Execute late, after response generation
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "emotionalResponseAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Generates emotionally appropriate responses, adds empathy and human touch, adapts tone based on user emotional state";
     }
     
     @Override

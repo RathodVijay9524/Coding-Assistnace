@@ -11,7 +11,7 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 @Component
-public class KnowledgeGraphAdvisor implements CallAdvisor {
+public class KnowledgeGraphAdvisor implements CallAdvisor, IAgentBrain {
 
     // Static knowledge graph - relationships between concepts
     private final Map<String, Set<String>> knowledgeGraph;
@@ -180,5 +180,16 @@ public class KnowledgeGraphAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 100; // Execute early to enhance the prompt
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "knowledgeGraphAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Builds and queries knowledge graph, connects concepts and relationships, enables semantic reasoning and context enrichment";
     }
 }

@@ -31,7 +31,7 @@ import java.util.UUID;
  * ✅ After: "As we discussed earlier about the ChatService architecture..."
  */
 @Component
-public class ConversationMemoryAdvisor implements CallAdvisor {
+public class ConversationMemoryAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(ConversationMemoryAdvisor.class);
     
@@ -48,7 +48,18 @@ public class ConversationMemoryAdvisor implements CallAdvisor {
     
     @Override
     public int getOrder() {
-        return 1; // Execute first to provide context to other advisors
+        return 2; // Execute early to provide context to other advisors
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "conversationMemoryAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Maintains conversation history and context, recalls previous interactions and decisions to provide continuity";
     }
     
     @Override

@@ -29,7 +29,7 @@ import java.util.List;
  * Execution Order: 900 (Very late, after all other processing)
  */
 @Component
-public class AdvancedCapabilitiesAdvisor implements CallAdvisor {
+public class AdvancedCapabilitiesAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(AdvancedCapabilitiesAdvisor.class);
     
@@ -50,6 +50,17 @@ public class AdvancedCapabilitiesAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 900; // Execute very late, after all other processing
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "advancedCapabilitiesAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Handles complex reasoning and multi-step problem solving, simulates multiple scenarios, evaluates and selects best responses";
     }
     
     @Override

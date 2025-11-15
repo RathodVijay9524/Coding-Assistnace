@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
  * Execution Order: 1 (Early, right after query planning)
  */
 @Component
-public class EmotionalContextAdvisor implements CallAdvisor {
+public class EmotionalContextAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(EmotionalContextAdvisor.class);
     
@@ -43,6 +43,17 @@ public class EmotionalContextAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 1; // Execute early, right after LocalQueryPlanner
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "emotionalContextAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Analyzes user emotions and sentiment, detects emotional state and prepares emotional context for response adaptation";
     }
     
     @Override

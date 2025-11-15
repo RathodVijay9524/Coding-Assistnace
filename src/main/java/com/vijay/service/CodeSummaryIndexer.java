@@ -29,18 +29,43 @@ public class CodeSummaryIndexer {
     
     private final VectorStore summaryStore;
     private final ChatClient chatClient;
+    private final EmbeddingCacheManager cacheManager;
     private final ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     public CodeSummaryIndexer(@Qualifier("summaryVectorStore") VectorStore summaryStore,
-                             OpenAiChatModel chatModel) {
+                             OpenAiChatModel chatModel,
+                             EmbeddingCacheManager cacheManager) {
         this.summaryStore = summaryStore;
         this.chatClient = ChatClient.builder(chatModel).build();
+        this.cacheManager = cacheManager;
     }
 
     @PostConstruct
     public void indexCodeSummaries() {
         logger.info("📚 Starting code summary indexing...");
         
+        // Check if cache is valid - skip embedding if documents haven't changed
+        String documentsHash = null;
+        try {
+            Path srcPath = Paths.get("src/main/java");
+            List<String> javaFiles = Files.walk(srcPath)
+                .filter(path -> path.toString().endsWith(".java"))
+                .filter(path -> !path.toString().contains("test"))
+                .map(Path::toString)
+                .toList();
+            
+            documentsHash = cacheManager.calculateDocumentsHash(javaFiles);
+            if (cacheManager.isCacheValid(documentsHash)) {
+                logger.info("✅ Cache is valid - SKIPPING summary re-embedding (fast startup!)");
+                return;
+            }
+            
+            logger.info("🔄 Cache invalid or missing - re-embedding summaries...");
+        } catch (Exception e) {
+            logger.warn("⚠️ Could not check cache, proceeding with indexing: {}", e.getMessage());
+        }
+        
+        final String finalHash = documentsHash;
         CompletableFuture.runAsync(() -> {
             try {
                 Path srcPath = Paths.get("src/main/java");
@@ -68,6 +93,12 @@ public class CodeSummaryIndexer {
                 }
 
                 logger.info("✅ Code summary indexing completed!");
+                
+                // Save cache after successful embedding
+                if (finalHash != null) {
+                    cacheManager.saveToCache(summaryStore, finalHash);
+                    logger.info("💾 Summary cache saved for future startups");
+                }
                 
             } catch (Exception e) {
                 logger.error("❌ Failed to index code summaries", e);

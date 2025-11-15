@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
  * Execution Order: 850 (Late, after personality but before final evaluation)
  */
 @Component
-public class CognitiveBiasAdvisor implements CallAdvisor {
+public class CognitiveBiasAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(CognitiveBiasAdvisor.class);
     
@@ -44,6 +44,17 @@ public class CognitiveBiasAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 850; // Execute late, after personality
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "cognitiveBiasAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Detects and applies cognitive biases, simulates human-like thinking patterns and heuristics, makes AI reasoning more natural";
     }
     
     @Override

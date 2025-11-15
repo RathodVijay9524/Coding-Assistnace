@@ -91,6 +91,14 @@ public class AIProviderConfig {
         return SimpleVectorStore.builder(embeddingModel).build();
     }
 
+    // 🧠 PHASE 8: Brain RAG Vector Store
+    @Bean
+    @Qualifier("brainVectorStore")
+    public VectorStore brainVectorStore(OllamaEmbeddingModel embeddingModel) {
+        logger.info("🧠 Creating Brain Vector Store for semantic brain selection (RAG-based advisor chain)");
+        return SimpleVectorStore.builder(embeddingModel).build();
+    }
+
     // LOCAL OLLAMA CLIENT (Token-Free!) 🚀
 
     @Bean(name = "ollamaChatClient")
@@ -310,6 +318,44 @@ public class AIProviderConfig {
         logger.info("   ✅ IncrementalSummarizer - Incremental summarization");
         logger.info("   ✅ IncrementalGraphCalculator - Incremental graph updates");
         logger.info("🎯 Phase 8 Services Ready!");
+    }
+
+    // ============ PHASE 8: DYNAMIC BRAIN SELECTION ============
+
+    /**
+     * Build a ChatClient with ONLY the selected brains
+     * This is the key to Brain RAG - instead of running all 13 brains,
+     * we only run the 3-4 most relevant brains for this query
+     * 
+     * @param chatModel The chat model to use (OpenAI, Ollama, etc.)
+     * @param selectedBrainBeans List of brain advisor beans to include
+     * @param aiAgentToolService The tool service for function calling
+     * @return ChatClient with only selected brains
+     */
+    public ChatClient buildDynamicChatClient(
+            org.springframework.ai.chat.model.ChatModel chatModel,
+            java.util.List<org.springframework.ai.chat.client.advisor.api.CallAdvisor> selectedBrainBeans,
+            AIAgentToolService aiAgentToolService) {
+        
+        logger.info("🔧 Building dynamic ChatClient with {} selected brains", selectedBrainBeans.size());
+        
+        if (selectedBrainBeans.isEmpty()) {
+            logger.warn("⚠️ No brains selected, building client with no advisors");
+            return ChatClient.builder(chatModel)
+                    .defaultTools(aiAgentToolService)
+                    .build();
+        }
+        
+        // Convert list to array for defaultAdvisors()
+        org.springframework.ai.chat.client.advisor.api.CallAdvisor[] advisorArray = 
+            selectedBrainBeans.toArray(new org.springframework.ai.chat.client.advisor.api.CallAdvisor[0]);
+        
+        logger.info("✅ Dynamic ChatClient built with {} advisors", advisorArray.length);
+        
+        return ChatClient.builder(chatModel)
+                .defaultAdvisors(advisorArray)
+                .defaultTools(aiAgentToolService)
+                .build();
     }
 
 }

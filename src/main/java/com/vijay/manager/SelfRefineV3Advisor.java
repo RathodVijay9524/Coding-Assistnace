@@ -34,7 +34,7 @@ import java.util.*;
  * Execution Order: 1000 (LAST - Final Quality Gate)
  */
 @Component
-public class SelfRefineV3Advisor implements CallAdvisor {
+public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(SelfRefineV3Advisor.class);
     
@@ -74,6 +74,17 @@ public class SelfRefineV3Advisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 1000; // Run LAST - final quality gate
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "selfRefineV3Advisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Evaluates responses against multiple criteria, judges quality and appropriateness, triggers refinement if needed, enforces quality standards";
     }
     
     @Override

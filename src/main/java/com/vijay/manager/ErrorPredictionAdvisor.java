@@ -24,7 +24,7 @@ import java.util.*;
  * Execution Order: 5 (After code retrieval, before final evaluation)
  */
 @Component
-public class ErrorPredictionAdvisor implements CallAdvisor {
+public class ErrorPredictionAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(ErrorPredictionAdvisor.class);
     
@@ -61,7 +61,18 @@ public class ErrorPredictionAdvisor implements CallAdvisor {
     
     @Override
     public int getOrder() {
-        return 5; // After code retrieval, before final evaluation
+        return 7; // After code retrieval, before final evaluation
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "errorPredictionAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Predicts potential errors and edge cases, detects security concerns and performance issues, validates reasoning before execution";
     }
     
     @Override

@@ -29,7 +29,7 @@ import org.springframework.stereotype.Component;
  * This is the "attention mechanism" that guides the entire thought process.
  */
 @Component
-public class ThoughtStreamAdvisor implements CallAdvisor {
+public class ThoughtStreamAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(ThoughtStreamAdvisor.class);
     
@@ -45,6 +45,17 @@ public class ThoughtStreamAdvisor implements CallAdvisor {
     @Override
     public String getName() {
         return "ThoughtStreamAdvisor";
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "thoughtStreamAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Manages attention and focus, determines query complexity and ambiguity, selects appropriate reasoning strategy and relevant brains to activate";
     }
     
     @Override

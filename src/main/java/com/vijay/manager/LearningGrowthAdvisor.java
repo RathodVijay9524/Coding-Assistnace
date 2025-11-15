@@ -26,7 +26,7 @@ import org.springframework.stereotype.Component;
  * Execution Order: 950 (Very late, after all processing)
  */
 @Component
-public class LearningGrowthAdvisor implements CallAdvisor {
+public class LearningGrowthAdvisor implements CallAdvisor, IAgentBrain {
     
     private static final Logger logger = LoggerFactory.getLogger(LearningGrowthAdvisor.class);
     
@@ -47,6 +47,17 @@ public class LearningGrowthAdvisor implements CallAdvisor {
     @Override
     public int getOrder() {
         return 950; // Execute very late, after all other processing
+    }
+    
+    // ===== IAgentBrain Implementation =====
+    @Override
+    public String getBrainName() {
+        return "learningGrowthAdvisor";  // ← Spring bean name (lowercase first letter)
+    }
+    
+    @Override
+    public String getBrainDescription() {
+        return "Learns from interactions and improves over time, adapts to user preferences and patterns, evolves strategies based on feedback";
     }
     
     @Override
