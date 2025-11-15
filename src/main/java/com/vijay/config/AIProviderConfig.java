@@ -4,6 +4,7 @@ import com.vijay.manager.AdvancedCapabilitiesAdvisor;
 import com.vijay.manager.ChainOfThoughtPlannerAdvisor;
 import com.vijay.manager.CognitiveBiasAdvisor;
 import com.vijay.manager.ConversationMemoryAdvisor;
+import com.vijay.manager.DynamicContextAdvisor;
 import com.vijay.manager.EmotionalContextAdvisor;
 import com.vijay.manager.EmotionalResponseAdvisor;
 import com.vijay.manager.EnhancedContextBuilderAdvisor;
@@ -104,46 +105,26 @@ public class AIProviderConfig {
     @Bean(name = "ollamaChatClient")
     @Primary
     ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
-                               ChatMemory chatMemory,
-                               ThoughtStreamAdvisor thoughtStreamAdvisor,
-                               EmotionalContextAdvisor emotionalContextAdvisor,
-                               EmotionalResponseAdvisor emotionalResponseAdvisor,
-                               TheoryOfMindAdvisor theoryOfMindAdvisor,
-                               PersonalityAdvisor personalityAdvisor,
-                               CognitiveBiasAdvisor cognitiveBiasAdvisor,
-                               AdvancedCapabilitiesAdvisor advancedCapabilitiesAdvisor,
-                               LearningGrowthAdvisor learningGrowthAdvisor,
-                               ConversationMemoryAdvisor conversationMemory,
-                               UserProfilingAdvisor userProfilingAdvisor,
                                LocalQueryPlannerAdvisor localPlanner,
-                               ErrorPredictionAdvisor errorPredictionAdvisor,
-                               KnowledgeGraphAdvisor knowledgeGraphAdvisor,
-                               LearningSystemAdvisor learningSystemAdvisor,
-                               ResponseSummarizerAdvisor summarizerAdvisor,
-                               SelfRefineV3Advisor selfRefineV3Advisor,
+                               DynamicContextAdvisor dynamicContext,
+                               SelfRefineV3Advisor judge,
+                               PersonalityAdvisor personality,
                                AIAgentToolService aiAgentToolService) {
-        logger.info("🚀 Creating LOCAL OLLAMA Chat Client - Multi-Brain Architecture v7.0 (Supervisor Brain + Self-Refine V3)");
+        logger.info("🚀 Creating HYBRID Chat Client - 4 Core Brains + Dynamic RAG");
+        logger.info("   Brain 0: LocalQueryPlannerAdvisor (The Conductor)");
+        logger.info("   Brain 1: DynamicContextAdvisor (The Context Fetcher)");
+        logger.info("   Brain 13: SelfRefineV3Advisor (The Judge)");
+        logger.info("   Brain 14: PersonalityAdvisor (The Voice)");
+        logger.info("   + Specialist Brains (2-12) dynamically selected via RAG");
+        
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(
-                    thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ Phase 6
-                    localPlanner,              // Brain 0: Local Query Planner (order: 0)
-                    emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
-                    conversationMemory,        // Brain Memory: Conversation Context (order: 1)
-                    MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
-                    theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ Phase 3
-                    userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
-                    errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
-                    knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
-                    learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
-                    summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                    emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ Phase 3
-                    personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
-                    cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
-                    advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
-                    learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
-                    selfRefineV3Advisor        // Brain 13: Self-Refine V3 (order: 1000) ⭐ Phase 7
+                    localPlanner,       // Brain 0: Query Planner (order: 0) - Creates plan
+                    dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Fetches specialist context
+                    judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
+                    personality         // Brain 14: Personality (order: 800) - Applies human touch
                 )
-                .defaultTools(aiAgentToolService)  // Tools available for Brain 1
+                .defaultTools(aiAgentToolService)
                 .build();
     }
 
