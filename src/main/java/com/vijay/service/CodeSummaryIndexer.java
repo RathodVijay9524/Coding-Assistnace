@@ -44,66 +44,65 @@ public class CodeSummaryIndexer {
     public void indexCodeSummaries() {
         logger.info("📚 Starting code summary indexing...");
         
-        // Check if cache is valid - skip embedding if documents haven't changed
-        String documentsHash = null;
         try {
             Path srcPath = Paths.get("src/main/java");
-            List<String> javaFiles = Files.walk(srcPath)
-                .filter(path -> path.toString().endsWith(".java"))
-                .filter(path -> !path.toString().contains("test"))
-                .map(Path::toString)
-                .toList();
+            if (!Files.exists(srcPath)) {
+                logger.warn("Source path not found: {}", srcPath);
+                return;
+            }
+
+            // Get file list ONCE and reuse it
+            List<String> javaFilePaths;
+            try (Stream<Path> paths = Files.walk(srcPath)) {
+                javaFilePaths = paths
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !path.toString().contains("test"))
+                    .map(Path::toString)
+                    .toList();
+            }
             
-            documentsHash = cacheManager.calculateDocumentsHash(javaFiles);
+            logger.info("📁 Found {} Java files", javaFilePaths.size());
+            
+            // Calculate hash from the SAME file list
+            String documentsHash = cacheManager.calculateDocumentsHash(javaFilePaths);
+            
+            // Check if cache is valid
             if (cacheManager.isCacheValid(documentsHash)) {
                 logger.info("✅ Cache is valid - SKIPPING summary re-embedding (fast startup!)");
                 return;
             }
             
             logger.info("🔄 Cache invalid or missing - re-embedding summaries...");
-        } catch (Exception e) {
-            logger.warn("⚠️ Could not check cache, proceeding with indexing: {}", e.getMessage());
-        }
-        
-        final String finalHash = documentsHash;
-        CompletableFuture.runAsync(() -> {
-            try {
-                Path srcPath = Paths.get("src/main/java");
-                if (!Files.exists(srcPath)) {
-                    logger.warn("Source path not found: {}", srcPath);
-                    return;
-                }
-
-                try (Stream<Path> paths = Files.walk(srcPath)) {
-                    List<Path> javaFiles = paths
-                        .filter(path -> path.toString().endsWith(".java"))
-                        .filter(path -> !path.toString().contains("test"))
-                        .toList();
-
-                    logger.info("📁 Found {} Java files to index", javaFiles.size());
-
-                    for (Path file : javaFiles) {
+            
+            // Proceed with async embedding
+            final String finalHash = documentsHash;
+            CompletableFuture.runAsync(() -> {
+                try {
+                    for (String filePath : javaFilePaths) {
                         try {
-                            indexFile(file);
+                            indexFile(Paths.get(filePath));
                             Thread.sleep(100); // Rate limiting
                         } catch (Exception e) {
-                            logger.error("Failed to index file: {}", file.getFileName(), e);
+                            logger.error("Failed to index file: {}", filePath, e);
                         }
                     }
-                }
 
-                logger.info("✅ Code summary indexing completed!");
-                
-                // Save cache after successful embedding
-                if (finalHash != null) {
-                    cacheManager.saveToCache(summaryStore, finalHash);
-                    logger.info("💾 Summary cache saved for future startups");
+                    logger.info("✅ Code summary indexing completed!");
+                    
+                    // Save cache after successful embedding
+                    if (finalHash != null) {
+                        cacheManager.saveToCache(summaryStore, finalHash);
+                        logger.info("💾 Summary cache saved for future startups");
+                    }
+                    
+                } catch (Exception e) {
+                    logger.error("❌ Failed to index code summaries", e);
                 }
-                
-            } catch (Exception e) {
-                logger.error("❌ Failed to index code summaries", e);
-            }
-        }, executorService);
+            }, executorService);
+            
+        } catch (Exception e) {
+            logger.error("❌ Error in indexCodeSummaries: {}", e.getMessage(), e);
+        }
     }
 
     private void indexFile(Path file) throws IOException {

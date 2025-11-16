@@ -146,16 +146,28 @@ public class EmbeddingCacheManager {
     
     /**
      * Calculate hash of documents for change detection
+     * 
+     * IMPORTANT: Sort files to ensure consistent hash across runs
+     * File order can vary between runs, so we MUST sort before hashing
      */
     public String calculateDocumentsHash(List<String> documentPaths) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             
-            for (String docPath : documentPaths) {
+            // CRITICAL: Sort files to ensure consistent ordering
+            List<String> sortedPaths = new ArrayList<>(documentPaths);
+            Collections.sort(sortedPaths);
+            
+            logger.debug("🔐 Calculating hash for {} files (sorted)", sortedPaths.size());
+            
+            for (String docPath : sortedPaths) {
                 File file = new File(docPath);
                 if (file.exists()) {
                     byte[] fileBytes = Files.readAllBytes(file.toPath());
                     digest.update(fileBytes);
+                    logger.debug("   📄 Hashing: {}", docPath);
+                } else {
+                    logger.warn("   ⚠️ File not found: {}", docPath);
                 }
             }
             
@@ -168,7 +180,7 @@ public class EmbeddingCacheManager {
             }
             
             String hash = hexString.toString();
-            logger.info("🔐 Documents hash calculated: {}", hash);
+            logger.info("✅ Documents hash calculated: {} (files: {})", hash, sortedPaths.size());
             return hash;
         } catch (Exception e) {
             logger.error("❌ Error calculating hash: {}", e.getMessage());

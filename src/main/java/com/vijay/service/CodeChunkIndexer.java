@@ -44,51 +44,47 @@ public class CodeChunkIndexer {
     public void indexCodeChunks() {
         logger.info("🧩 Starting code chunk indexing...");
         
-        // Check if cache is valid - skip embedding if documents haven't changed
-        String documentsHash = null;
         try {
             Path srcPath = Paths.get("src/main/java");
-            List<String> javaFiles = Files.walk(srcPath)
-                .filter(path -> path.toString().endsWith(".java"))
-                .filter(path -> !path.toString().contains("test"))
-                .map(Path::toString)
-                .toList();
+            if (!Files.exists(srcPath)) {
+                logger.warn("Source path not found: {}", srcPath);
+                return;
+            }
+
+            // Get file list ONCE and reuse it
+            List<String> javaFilePaths;
+            try (Stream<Path> paths = Files.walk(srcPath)) {
+                javaFilePaths = paths
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !path.toString().contains("test"))
+                    .map(Path::toString)
+                    .toList();
+            }
             
-            documentsHash = cacheManager.calculateDocumentsHash(javaFiles);
+            logger.info("📁 Found {} Java files", javaFilePaths.size());
+            
+            // Calculate hash from the SAME file list
+            String documentsHash = cacheManager.calculateDocumentsHash(javaFilePaths);
+            
+            // Check if cache is valid
             if (cacheManager.isCacheValid(documentsHash)) {
                 logger.info("✅ Cache is valid - SKIPPING chunk re-embedding (fast startup!)");
                 return;
             }
             
             logger.info("🔄 Cache invalid or missing - re-embedding chunks...");
-        } catch (Exception e) {
-            logger.warn("⚠️ Could not check cache, proceeding with indexing: {}", e.getMessage());
-        }
-        
-        final String finalHash = documentsHash;
-        CompletableFuture.runAsync(() -> {
-            try {
-                Path srcPath = Paths.get("src/main/java");
-                if (!Files.exists(srcPath)) {
-                    logger.warn("Source path not found: {}", srcPath);
-                    return;
-                }
-
-                try (Stream<Path> paths = Files.walk(srcPath)) {
-                    List<Path> javaFiles = paths
-                        .filter(path -> path.toString().endsWith(".java"))
-                        .filter(path -> !path.toString().contains("test"))
-                        .toList();
-
-                    logger.info("📁 Found {} Java files to chunk", javaFiles.size());
-
+            
+            // Proceed with async embedding
+            final String finalHash = documentsHash;
+            CompletableFuture.runAsync(() -> {
+                try {
                     int totalChunks = 0;
-                    for (Path file : javaFiles) {
+                    for (String filePath : javaFilePaths) {
                         try {
-                            int chunks = chunkFile(file);
+                            int chunks = chunkFile(Paths.get(filePath));
                             totalChunks += chunks;
                         } catch (Exception e) {
-                            logger.error("Failed to chunk file: {}", file.getFileName(), e);
+                            logger.error("Failed to chunk file: {}", filePath, e);
                         }
                     }
 
@@ -99,12 +95,15 @@ public class CodeChunkIndexer {
                         cacheManager.saveToCache(chunkStore, finalHash);
                         logger.info("💾 Chunk cache saved for future startups");
                     }
+                    
+                } catch (Exception e) {
+                    logger.error("❌ Failed to index code chunks", e);
                 }
-                
-            } catch (Exception e) {
-                logger.error("❌ Failed to index code chunks", e);
-            }
-        }, executorService);
+            }, executorService);
+            
+        } catch (Exception e) {
+            logger.error("❌ Error in indexCodeChunks: {}", e.getMessage(), e);
+        }
     }
 
     private int chunkFile(Path file) throws IOException {
