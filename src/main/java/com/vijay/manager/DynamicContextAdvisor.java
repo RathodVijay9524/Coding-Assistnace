@@ -1,7 +1,9 @@
 package com.vijay.manager;
 
+import com.vijay.dto.AgentPlan;
 import com.vijay.service.BrainFinderService;
 import com.vijay.tools.ToolFinderService;
+import com.vijay.util.AgentPlanHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClientRequest;
@@ -71,40 +73,42 @@ public class DynamicContextAdvisor implements CallAdvisor, IAgentBrain {
     
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
-        logger.info("🧠 Brain 1 (Dynamic Context): Reading plan and fetching specialist context...");
+        logger.info("🧠 Brain 1 (Dynamic Context): Reading master plan and fetching specialist context...");
         
         try {
-            // STEP 1: Extract user query
+            // STEP 1: Read the master plan from Brain 0 (ConductorAdvisor)
+            AgentPlan masterPlan = AgentPlanHolder.getPlan();
+            
+            if (masterPlan != null) {
+                logger.info("   📋 Master Plan Found:");
+                logger.info("      Intent: {}", masterPlan.getIntent());
+                logger.info("      Complexity: {}", masterPlan.getComplexity());
+                logger.info("      Required Tools: {}", masterPlan.getRequiredTools());
+                logger.info("      Selected Brains: {}", masterPlan.getSelectedBrains());
+            } else {
+                logger.warn("   ⚠️ No master plan found - using fallback context discovery");
+            }
+            
+            // STEP 2: Extract user query
             String userQuery = extractUserMessage(request);
             logger.info("   📝 Query: {}", userQuery.length() > 60 ? userQuery.substring(0, 60) + "..." : userQuery);
             
-            // STEP 2: Call BrainFinder to identify specialist brains needed
-            List<String> specialistBrains = brainFinderService.findBrainsFor(userQuery);
-            logger.info("   🧠 Specialist brains needed: {} - {}", specialistBrains.size(), specialistBrains);
+            // STEP 3: Use plan's selected brains if available, otherwise discover via BrainFinder
+            List<String> specialistBrains = (masterPlan != null && !masterPlan.getSelectedBrains().isEmpty()) 
+                ? masterPlan.getSelectedBrains()
+                : brainFinderService.findBrainsFor(userQuery);
+            logger.info("   🧠 Specialist brains to activate: {} - {}", specialistBrains.size(), specialistBrains);
             
-            // STEP 3: Call ToolFinder to identify tools needed
-            List<String> requiredTools = toolFinderService.findToolsFor(userQuery);
-            logger.info("   🔧 Tools needed: {} - {}", requiredTools.size(), requiredTools);
+            // STEP 4: Use plan's required tools if available, otherwise discover via ToolFinder
+            List<String> requiredTools = (masterPlan != null && !masterPlan.getRequiredTools().isEmpty())
+                ? masterPlan.getRequiredTools()
+                : toolFinderService.findToolsFor(userQuery);
+            logger.info("   🔧 Tools to use: {} - {}", requiredTools.size(), requiredTools);
             
-            // STEP 4: Build context injection for specialist brains
+            // STEP 5: Build context injection for specialist brains
             String contextInjection = buildContextInjection(specialistBrains, requiredTools);
             logger.info("   ✅ Context prepared for {} specialist brains and {} tools", 
                 specialistBrains.size(), requiredTools.size());
-            
-            // STEP 5: Log the specialist brains that will be activated
-            if (!specialistBrains.isEmpty()) {
-                logger.info("   🎯 Specialist brains to activate:");
-                for (String brain : specialistBrains) {
-                    logger.info("      - {}", brain);
-                }
-            }
-            
-            if (!requiredTools.isEmpty()) {
-                logger.info("   🎯 Tools to use:");
-                for (String tool : requiredTools) {
-                    logger.info("      - {}", tool);
-                }
-            }
             
             // STEP 6: Continue to next advisor in chain
             // The specialist brains will now have context about what they should do

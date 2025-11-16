@@ -3,23 +3,19 @@ package com.vijay.config;
 import com.vijay.manager.AdvancedCapabilitiesAdvisor;
 import com.vijay.manager.ChainOfThoughtPlannerAdvisor;
 import com.vijay.manager.CognitiveBiasAdvisor;
+import com.vijay.manager.ConductorAdvisor;
 import com.vijay.manager.ConversationMemoryAdvisor;
 import com.vijay.manager.DynamicContextAdvisor;
+import com.vijay.manager.ToolCallAdvisor;
 import com.vijay.manager.EmotionalContextAdvisor;
 import com.vijay.manager.EmotionalResponseAdvisor;
-import com.vijay.manager.EnhancedContextBuilderAdvisor;
-import com.vijay.manager.LearningGrowthAdvisor;
 import com.vijay.manager.PersonalityAdvisor;
 import com.vijay.manager.TheoryOfMindAdvisor;
 import com.vijay.manager.ThoughtStreamAdvisor;
-import com.vijay.manager.EnhancedSelfRefineAdvisor;
 import com.vijay.manager.ErrorPredictionAdvisor;
 import com.vijay.manager.KnowledgeGraphAdvisor;
 import com.vijay.manager.LearningSystemAdvisor;
-import com.vijay.manager.LocalQueryPlannerAdvisor;
-import com.vijay.manager.MultiCriteriaJudgeAdvisor;
-import com.vijay.manager.QueryPlannerAdvisor;
-import com.vijay.manager.SmartQualityAdvisor;
+import com.vijay.manager.LearningGrowthAdvisor;
 import com.vijay.manager.ResponseSummarizerAdvisor;
 import com.vijay.manager.SelfRefineEvaluationAdvisor;
 import com.vijay.manager.SelfRefineV3Advisor;
@@ -29,9 +25,7 @@ import com.vijay.service.IncrementalIndexer;
 import com.vijay.service.IncrementalSummarizer;
 import com.vijay.service.IncrementalGraphCalculator;
 import com.vijay.tools.AIAgentToolService;
-import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
-import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -105,22 +99,25 @@ public class AIProviderConfig {
     @Bean(name = "ollamaChatClient")
     @Primary
     ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
-                               LocalQueryPlannerAdvisor localPlanner,
+                               ConductorAdvisor conductor,
                                DynamicContextAdvisor dynamicContext,
+                               ToolCallAdvisor toolCall,
                                SelfRefineV3Advisor judge,
                                PersonalityAdvisor personality,
                                AIAgentToolService aiAgentToolService) {
-        logger.info("🚀 Creating HYBRID Chat Client - 4 Core Brains + Dynamic RAG");
-        logger.info("   Brain 0: LocalQueryPlannerAdvisor (The Conductor)");
+        logger.info("🎼 Creating UNIFIED CONDUCTOR Chat Client - 5 Core Brains + Dynamic RAG");
+        logger.info("   Brain 0: ConductorAdvisor (The Unified Master Planner) ⭐ NEW");
         logger.info("   Brain 1: DynamicContextAdvisor (The Context Fetcher)");
+        logger.info("   Brain 2: ToolCallAdvisor (Plan-Aware Tool Executor) ⭐ NEW");
         logger.info("   Brain 13: SelfRefineV3Advisor (The Judge)");
         logger.info("   Brain 14: PersonalityAdvisor (The Voice)");
-        logger.info("   + Specialist Brains (2-12) dynamically selected via RAG");
+        logger.info("   + Specialist Brains (3-12) dynamically selected via RAG");
         
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(
-                    localPlanner,       // Brain 0: Query Planner (order: 0) - Creates plan
-                    dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Fetches specialist context
+                    conductor,          // Brain 0: Unified Conductor (order: 0) - Creates ONE master plan
+                    dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Reads plan, fetches specialist context
+                    toolCall,           // Brain 2: Tool Call (order: 2) - Reads plan, executes tools if needed
                     judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
                     personality         // Brain 14: Personality (order: 800) - Applies human touch
                 )
@@ -131,44 +128,20 @@ public class AIProviderConfig {
     // OpenAI client (backup for complex reasoning when needed)
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
-                                ChatMemory chatMemory,
-                                ThoughtStreamAdvisor thoughtStreamAdvisor,
-                                EmotionalContextAdvisor emotionalContextAdvisor,
-                                EmotionalResponseAdvisor emotionalResponseAdvisor,
-                                TheoryOfMindAdvisor theoryOfMindAdvisor,
-                                PersonalityAdvisor personalityAdvisor,
-                                CognitiveBiasAdvisor cognitiveBiasAdvisor,
-                                AdvancedCapabilitiesAdvisor advancedCapabilitiesAdvisor,
-                                LearningGrowthAdvisor learningGrowthAdvisor,
-                                ConversationMemoryAdvisor conversationMemory,
-                                UserProfilingAdvisor userProfilingAdvisor,
-                                ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
-                                ErrorPredictionAdvisor errorPredictionAdvisor,
-                                KnowledgeGraphAdvisor knowledgeGraphAdvisor,
-                                LearningSystemAdvisor learningSystemAdvisor,
-                                ResponseSummarizerAdvisor summarizerAdvisor,
-                                SelfRefineV3Advisor selfRefineV3Advisor,
+                                ConductorAdvisor conductor,
+                                DynamicContextAdvisor dynamicContext,
+                                ToolCallAdvisor toolCall,
+                                SelfRefineV3Advisor judge,
+                                PersonalityAdvisor personality,
                                 AIAgentToolService aiAgentToolService) {
         logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v7.0 (Supervisor Brain + Self-Refine V3)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
-                    thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ Phase 6
-                    chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
-                    emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
-                    conversationMemory,        // Brain Memory: Conversation Context (order: 1)
-                    MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
-                    theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ Phase 3
-                    userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
-                    errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
-                    knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
-                    learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
-                    summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                    emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ Phase 3
-                    personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
-                    cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
-                    advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
-                    learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
-                    selfRefineV3Advisor        // Brain 13: Self-Refine V3 (order: 1000) ⭐ Phase 7
+                        conductor,          // Brain 0: Unified Conductor (order: 0) - Creates ONE master plan
+                        dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Reads plan, fetches specialist context
+                        toolCall,           // Brain 2: Tool Call (order: 2) - Reads plan, executes tools if needed
+                        judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
+                        personality
                 )
                 .defaultTools(aiAgentToolService)  // Tools available for Brain 1
                 .build();
@@ -176,44 +149,20 @@ public class AIProviderConfig {
 
     @Bean(name = "anthropicChatClient")
     ChatClient anthropicChatClient(AnthropicChatModel anthropicChatModel,
-                                   ChatMemory chatMemory,
-                                   ThoughtStreamAdvisor thoughtStreamAdvisor,
-                                   EmotionalContextAdvisor emotionalContextAdvisor,
-                                   EmotionalResponseAdvisor emotionalResponseAdvisor,
-                                   TheoryOfMindAdvisor theoryOfMindAdvisor,
-                                   PersonalityAdvisor personalityAdvisor,
-                                   CognitiveBiasAdvisor cognitiveBiasAdvisor,
-                                   AdvancedCapabilitiesAdvisor advancedCapabilitiesAdvisor,
-                                   LearningGrowthAdvisor learningGrowthAdvisor,
-                                   ConversationMemoryAdvisor conversationMemory,
-                                   UserProfilingAdvisor userProfilingAdvisor,
-                                   ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
-                                   ErrorPredictionAdvisor errorPredictionAdvisor,
-                                   KnowledgeGraphAdvisor knowledgeGraphAdvisor,
-                                   LearningSystemAdvisor learningSystemAdvisor,
-                                   ResponseSummarizerAdvisor summarizerAdvisor,
-                                   SelfRefineV3Advisor selfRefineV3Advisor,
+                                   ConductorAdvisor conductor,
+                                   DynamicContextAdvisor dynamicContext,
+                                   ToolCallAdvisor toolCall,
+                                   SelfRefineV3Advisor judge,
+                                   PersonalityAdvisor personality,
                                    AIAgentToolService aiAgentToolService) {
         logger.info("Creating Anthropic Chat Client with MCP tools");
         return ChatClient.builder(anthropicChatModel)
                 .defaultAdvisors(
-                        thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ Phase 6
-                        chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
-                        emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
-                        conversationMemory,        // Brain Memory: Conversation Context (order: 1)
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
-                        theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ Phase 3
-                        userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
-                        errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
-                        knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
-                        learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
-                        summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                        emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ Phase 3
-                        personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
-                        cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
-                        advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
-                        learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
-                        selfRefineV3Advisor        // Brain 13: Self-Refine V3 (order: 1000) ⭐ Phase 7
+                        conductor,          // Brain 0: Unified Conductor (order: 0) - Creates ONE master plan
+                        dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Reads plan, fetches specialist context
+                        toolCall,           // Brain 2: Tool Call (order: 2) - Reads plan, executes tools if needed
+                        judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
+                        personality
                 )
                 .defaultTools(aiAgentToolService)
                 .build();
@@ -221,44 +170,20 @@ public class AIProviderConfig {
 
     @Bean(name = "googleChatClient")
     ChatClient geminChatClient(GoogleGenAiChatModel googleGenAiChatModel,
-                               ChatMemory chatMemory,
-                               ThoughtStreamAdvisor thoughtStreamAdvisor,
-                               EmotionalContextAdvisor emotionalContextAdvisor,
-                               EmotionalResponseAdvisor emotionalResponseAdvisor,
-                               TheoryOfMindAdvisor theoryOfMindAdvisor,
-                               PersonalityAdvisor personalityAdvisor,
-                               CognitiveBiasAdvisor cognitiveBiasAdvisor,
-                               AdvancedCapabilitiesAdvisor advancedCapabilitiesAdvisor,
-                               LearningGrowthAdvisor learningGrowthAdvisor,
-                               ConversationMemoryAdvisor conversationMemory,
-                               UserProfilingAdvisor userProfilingAdvisor,
-                               ChainOfThoughtPlannerAdvisor chainOfThoughtPlanner,
-                               ErrorPredictionAdvisor errorPredictionAdvisor,
-                               KnowledgeGraphAdvisor knowledgeGraphAdvisor,
-                               LearningSystemAdvisor learningSystemAdvisor,
-                               ResponseSummarizerAdvisor summarizerAdvisor,
-                               SelfRefineV3Advisor selfRefineV3Advisor,
+                               ConductorAdvisor conductor,
+                               DynamicContextAdvisor dynamicContext,
+                               ToolCallAdvisor toolCall,
+                               SelfRefineV3Advisor judge,
+                               PersonalityAdvisor personality,
                                AIAgentToolService aiAgentToolService) {
         logger.info("Creating google Chat Client with MCP tools");
         return ChatClient.builder(googleGenAiChatModel)
                 .defaultAdvisors(
-                        thoughtStreamAdvisor,      // Brain -1: Thought Stream (order: -1) ⭐ Phase 6
-                        chainOfThoughtPlanner,     // Brain 0: Chain-of-Thought Planner (order: 0)
-                        emotionalContextAdvisor,   // Brain 7: Emotional Context (order: 1) ⭐ Phase 3
-                        conversationMemory,        // Brain Memory: Conversation Context (order: 1)
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Short-term Memory
-                        theoryOfMindAdvisor,       // Brain 8: Theory of Mind (order: 3) ⭐ Phase 3
-                        userProfilingAdvisor,      // Brain 5: User Profiling (order: 2)
-                        errorPredictionAdvisor,    // Brain 6: Error Prediction (order: 5)
-                        knowledgeGraphAdvisor,     // Knowledge Graph (order: 100)
-                        learningSystemAdvisor,     // Brain 4: Learning System (order: 7)
-                        summarizerAdvisor,         // Brain 2: Response Summarizer (order: 500)
-                        emotionalResponseAdvisor,  // Brain 7: Emotional Response (order: 750) ⭐ Phase 3
-                        personalityAdvisor,        // Brain 9: Personality (order: 800) ⭐ Phase 3
-                        cognitiveBiasAdvisor,      // Brain 10: Cognitive Bias (order: 850) ⭐ Phase 4
-                        advancedCapabilitiesAdvisor, // Brain 11: Advanced Capabilities (order: 900) ⭐ Phase 4
-                        learningGrowthAdvisor,     // Brain 12: Learning & Growth (order: 950) ⭐ Phase 5
-                        selfRefineV3Advisor        // Brain 13: Self-Refine V3 (order: 1000) ⭐ Phase 7
+                        conductor,          // Brain 0: Unified Conductor (order: 0) - Creates ONE master plan
+                        dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Reads plan, fetches specialist context
+                        toolCall,           // Brain 2: Tool Call (order: 2) - Reads plan, executes tools if needed
+                        judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
+                        personality
                 )
                 .defaultTools(aiAgentToolService)
                 .build();

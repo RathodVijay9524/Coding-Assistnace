@@ -2,11 +2,15 @@ package com.vijay.service;
 
 import com.vijay.dto.ChatRequest;
 import com.vijay.dto.ChatResponse;
+import com.vijay.manager.AiToolProvider;
+import com.vijay.tools.ToolFinderService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * 🧠 ChatService - Dumb Orchestrator (Hybrid Brain Architecture)
@@ -36,36 +40,45 @@ public class ChatService {
     private static final Logger logger = LoggerFactory.getLogger(ChatService.class);
 
     private final ApplicationContext applicationContext;
+    private final ToolFinderService toolFinder;
 
-    public ChatService(ApplicationContext applicationContext) {
+    public ChatService(ApplicationContext applicationContext,
+                       List<AiToolProvider> allToolProviders,
+                       ToolFinderService toolFinder) {
         this.applicationContext = applicationContext;
+        this.toolFinder = toolFinder;
     }
 
     public ChatResponse processChat(String provider, ChatRequest request) {
         logger.info("🧠 ChatService (Dumb Orchestrator): Processing message...");
-        logger.info("   � Message: {}", request.getMessage().length() > 60 ? 
+        logger.info("   📝 Message: {}", request.getMessage().length() > 60 ? 
             request.getMessage().substring(0, 60) + "..." : request.getMessage());
 
         try {
             // STEP 1: Get ChatClient for provider
             ChatClient chatClient = getChatClientForProvider(provider);
             logger.info("   ✅ Got ChatClient for provider: {}", provider);
+
+            // STEP 2: Find required tools using RAG (ToolFinderService)
+            List<String> requiredToolNames = toolFinder.findToolsFor(request.getMessage());
+            logger.info("   🔧 Tools needed: {} - {}", requiredToolNames.size(), requiredToolNames);
             
-            // STEP 2: Execute prompt
-            // The ChatClient has 4 Core Brains:
-            // - Brain 0: QueryPlanner (creates plan)
-            // - Brain 1: DynamicContextAdvisor (fetches specialist context via RAG)
-            // - Brain 13: Judge (evaluates quality)
-            // - Brain 14: Personality (applies human touch)
-            logger.info("   🧠 Delegating to Hybrid Brain Chain (4 Core + Dynamic Specialist)...");
+            // Convert List<String> to String[] for .toolNames() API
+            String[] toolNamesArray = requiredToolNames.toArray(new String[0]);
+
+            logger.info("   🧠 Delegating to Hybrid Brain Chain (5 Core + Dynamic Specialist)...");
             
+            // STEP 3: Call ChatClient with tools
+            // The Unified Conductor (Brain 0) will create the master plan
+            // All downstream brains will read the plan and act accordingly
             String response = chatClient.prompt()
                     .user(request.getMessage())
+                    .toolNames(toolNamesArray)  // ← Pass required tools to LLM
                     .call()
                     .content();
 
             logger.info("✅ Response generated successfully");
-            return new ChatResponse(response, provider, new String[]{});
+            return new ChatResponse(response, provider, toolNamesArray);
 
         } catch (IllegalArgumentException e) {
             logger.error("❌ Invalid provider: {}", provider);
