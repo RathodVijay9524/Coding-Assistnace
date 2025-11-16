@@ -40,6 +40,26 @@ public class EmbeddingCacheManager {
     private static final String HASH_FILE = "documents.hash";
     
     /**
+     * Check if cache file exists (simple check, no hash comparison)
+     */
+    public boolean cacheFileExists() {
+        try {
+            Path cacheDirPath = Paths.get(cachePath);
+            Path embeddingsFilePath = cacheDirPath.resolve(EMBEDDINGS_FILE);
+            Path hashFilePath = cacheDirPath.resolve(HASH_FILE);
+            
+            boolean exists = Files.exists(embeddingsFilePath) && Files.exists(hashFilePath);
+            if (exists) {
+                logger.info("✅ Cache files exist - skipping re-embedding");
+            }
+            return exists;
+        } catch (Exception e) {
+            logger.warn("⚠️ Error checking cache file existence: {}", e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
      * Check if cache exists and is valid
      */
     public boolean isCacheValid(String documentsHash) {

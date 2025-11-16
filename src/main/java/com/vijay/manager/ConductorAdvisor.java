@@ -361,31 +361,53 @@ public class ConductorAdvisor implements CallAdvisor, IAgentBrain {
     
     /**
      * ⚡ FAST PATH: Detect simple queries for performance optimization
-     * Simple queries: < 50 chars, no complex keywords, single intent
+     * CRITICAL FIX: Only use fast path for TRULY simple queries
+     * Avoid fast path for: technical queries, research, external data needs
      */
     private boolean isSimpleQuery(String query) {
         if (query == null || query.isEmpty()) return false;
         
-        // Length check: simple queries are short
-        if (query.length() > 50) return false;
-        
-        // Keyword check: avoid complex keywords
         String lowerQuery = query.toLowerCase();
-        if (lowerQuery.contains("why") || 
-            lowerQuery.contains("how") || 
-            lowerQuery.contains("explain") ||
-            lowerQuery.contains("architecture") ||
-            lowerQuery.contains("design") ||
-            lowerQuery.contains("refactor") ||
-            lowerQuery.contains("optimize")) {
+        
+        // ❌ NEVER use fast path for these keywords (requires full brain chain)
+        String[] complexKeywords = {
+            "why", "how", "explain", "architecture", "design", "refactor", "optimize",
+            "spring", "version", "latest", "documentation", "tutorial", "guide",
+            "research", "find", "search", "what is", "tell me about",
+            "weather", "forecast", "temperature", "city", "location"
+        };
+        
+        for (String keyword : complexKeywords) {
+            if (lowerQuery.contains(keyword)) {
+                logger.debug("⚠️ Complex keyword '{}' detected - skipping fast path", keyword);
+                return false;
+            }
+        }
+        
+        // ❌ NEVER use fast path for long queries
+        if (query.length() > 40) {
+            logger.debug("⚠️ Query too long ({} chars) - skipping fast path", query.length());
             return false;
         }
         
-        // Question count: single question only
+        // ❌ NEVER use fast path for multiple questions
         int questionCount = query.split("\\?").length - 1;
-        if (questionCount > 1) return false;
+        if (questionCount > 1) {
+            logger.debug("⚠️ Multiple questions detected - skipping fast path");
+            return false;
+        }
         
-        return true;
+        // ✅ ONLY use fast path for arithmetic and simple time queries
+        if (lowerQuery.matches(".*[+\\-*/].*") || 
+            lowerQuery.contains("what time") || 
+            lowerQuery.contains("what date")) {
+            logger.info("✅ Simple arithmetic/time query - using fast path");
+            return true;
+        }
+        
+        // Default: use full brain chain for safety
+        logger.debug("⚠️ Query doesn't match fast path criteria - using full chain");
+        return false;
     }
     
     /**

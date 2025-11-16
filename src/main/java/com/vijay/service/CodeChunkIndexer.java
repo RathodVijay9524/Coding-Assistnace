@@ -51,6 +51,12 @@ public class CodeChunkIndexer {
                 return;
             }
 
+            // Check if cache already exists FIRST (before calculating hash)
+            if (cacheManager.cacheFileExists()) {
+                logger.info("✅ Cache file exists - SKIPPING chunk re-embedding (fast startup!)");
+                return;
+            }
+            
             // Get file list ONCE and reuse it
             List<String> javaFilePaths;
             try (Stream<Path> paths = Files.walk(srcPath)) {
@@ -65,12 +71,6 @@ public class CodeChunkIndexer {
             
             // Calculate hash from the SAME file list
             String documentsHash = cacheManager.calculateDocumentsHash(javaFilePaths);
-            
-            // Check if cache is valid
-            if (cacheManager.isCacheValid(documentsHash)) {
-                logger.info("✅ Cache is valid - SKIPPING chunk re-embedding (fast startup!)");
-                return;
-            }
             
             logger.info("🔄 Cache invalid or missing - re-embedding chunks...");
             
