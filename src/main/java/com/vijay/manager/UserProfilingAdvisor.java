@@ -1,5 +1,6 @@
 package com.vijay.manager;
 
+import com.vijay.context.GlobalBrainContext;
 import com.vijay.service.UserProfilingService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +63,16 @@ public class UserProfilingAdvisor implements CallAdvisor, IAgentBrain {
         try {
             // Extract user ID
             String userId = extractUserId(request);
+            
+            // ✨ NEW: Extract user name from query (e.g., "my name is Vijay")
+            String userQuery = extractUserQuery(request);
+            String userName = extractUserName(userQuery);
+            if (userName != null && !userName.isEmpty()) {
+                logger.info("👤 Brain 5: User identified as: {}", userName);
+                // Store in GlobalBrainContext for all brains to use
+                GlobalBrainContext.put("userName", userName);
+                // TODO: Store in UserProfilingService for persistence when method is available
+            }
             
             // Get user profile
             UserProfilingService.UserProfileSummary profile = userProfilingService.getProfileSummary(userId);
@@ -232,5 +243,47 @@ public class UserProfilingAdvisor implements CallAdvisor, IAgentBrain {
             logger.debug("Failed to extract user query: {}", e.getMessage());
         }
         return "";
+    }
+    
+    /**
+     * ✨ NEW: Extract user name from query
+     * Patterns: "my name is Vijay", "I'm Vijay", "call me Vijay"
+     */
+    private String extractUserName(String query) {
+        if (query == null || query.isEmpty()) return null;
+        
+        String lowerQuery = query.toLowerCase();
+        
+        // Pattern 1: "my name is <name>"
+        if (lowerQuery.contains("my name is")) {
+            int startIdx = lowerQuery.indexOf("my name is") + 10;
+            String remainder = query.substring(startIdx).trim();
+            String name = remainder.split("[,.]")[0].trim();
+            if (!name.isEmpty() && name.length() < 50) {
+                return name;
+            }
+        }
+        
+        // Pattern 2: "I'm <name>"
+        if (lowerQuery.contains("i'm ")) {
+            int startIdx = lowerQuery.indexOf("i'm ") + 4;
+            String remainder = query.substring(startIdx).trim();
+            String name = remainder.split("[,.]")[0].trim();
+            if (!name.isEmpty() && name.length() < 50) {
+                return name;
+            }
+        }
+        
+        // Pattern 3: "call me <name>"
+        if (lowerQuery.contains("call me ")) {
+            int startIdx = lowerQuery.indexOf("call me ") + 8;
+            String remainder = query.substring(startIdx).trim();
+            String name = remainder.split("[,.]")[0].trim();
+            if (!name.isEmpty() && name.length() < 50) {
+                return name;
+            }
+        }
+        
+        return null;
     }
 }

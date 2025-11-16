@@ -125,8 +125,8 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
             if (evaluation.finalRating < MIN_ACCEPTABLE_RATING && 
                 evaluation.refinementAttempts < MAX_REFINEMENT_ATTEMPTS) {
                 
-                logger.info("🔁 Brain 13: Quality too low ({:.2f}), attempting refinement...", 
-                    evaluation.finalRating);
+                logger.info("🔁 Brain 13: Quality too low ({}), attempting refinement...", 
+                    String.format("%.2f", evaluation.finalRating));
                 
                 String refinedContent = refineResponse(content, userQuery, evaluation);
                 
@@ -136,9 +136,9 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
                         refinedContent, userQuery, userId, conversationId
                     );
                     
-                    logger.info("🔄 Brain 13: Refined quality: {:.2f} (improvement: {:.2f})", 
-                        refinedEvaluation.finalRating, 
-                        refinedEvaluation.finalRating - evaluation.finalRating);
+                    logger.info("🔄 Brain 13: Refined quality: {} (improvement: {})", 
+                        String.format("%.2f", refinedEvaluation.finalRating), 
+                        String.format("%.2f", refinedEvaluation.finalRating - evaluation.finalRating));
                     
                     // Use refined if better
                     if (refinedEvaluation.finalRating > evaluation.finalRating) {
@@ -151,8 +151,8 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
             // Log final status
             supervisorBrain.logStatus(conversationId);
             
-            logger.info("✅ Brain 13: Final rating: {:.2f}/5.0 - {}", 
-                evaluation.finalRating, evaluation.verdict);
+            logger.info("✅ Brain 13: Final rating: {}/5.0 - {}", 
+                String.format("%.2f", evaluation.finalRating), evaluation.verdict);
             
             return response;
             
@@ -253,6 +253,7 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
     
     /**
      * Evaluate clarity of response
+     * NOTE: Short, direct answers are CLEAR - not unclear!
      */
     private double evaluateClarity(String content) {
         if (content == null || content.isEmpty()) {
@@ -260,17 +261,18 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
         }
         
         // Simple clarity metrics
-        int sentenceCount = content.split("[.!?]").length;
+        int sentenceCount = Math.max(1, content.split("[.!?]").length);
         int wordCount = content.split("\\s+").length;
         
         // Average words per sentence
         double avgWordsPerSentence = (double) wordCount / sentenceCount;
         
-        // Ideal range: 10-20 words per sentence
-        if (avgWordsPerSentence < 10) {
-            return 3.0; // Too short, might be unclear
+        // Recognize that short, direct answers are CLEAR
+        // Examples: "2025-11-16", "30", "Yes" - all clear!
+        if (wordCount < 20) {
+            return 4.5; // Concise and clear ✅
         } else if (avgWordsPerSentence > 30) {
-            return 2.5; // Too long, might be unclear
+            return 2.5; // Too verbose, harder to parse
         } else {
             return 4.5; // Good clarity
         }
@@ -419,20 +421,34 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
     }
     
     /**
-     * Log evaluation details
+     * Log evaluation details with null checks
      */
     private void logEvaluationDetails(EnhancedQualityEvaluation eval) {
+        if (eval == null) {
+            logger.warn("⚠️ Brain 13: Evaluation is null, skipping details");
+            return;
+        }
+        
         logger.info("🧾 Brain 13: Comprehensive Evaluation:");
-        logger.info("   📝 Clarity: {:.2f}/5.0", eval.clarityScore);
-        logger.info("   🎯 Relevance: {:.2f}/5.0", eval.relevanceScore);
-        logger.info("   💡 Helpfulness: {:.2f}/5.0", eval.helpfulnessScore);
-        logger.info("   ✅ Consistency: {:.2f}/5.0 (issues: {})", eval.consistencyScore, eval.consistencyIssues);
-        logger.info("   🚨 Hallucination Score: {:.2f} (count: {})", eval.hallucinationScore, eval.hallucinationCount);
+        logger.info("   📝 Clarity: {}/5.0", String.format("%.2f", Math.max(0, eval.clarityScore)));
+        logger.info("   🎯 Relevance: {}/5.0", String.format("%.2f", Math.max(0, eval.relevanceScore)));
+        logger.info("   💡 Helpfulness: {}/5.0", String.format("%.2f", Math.max(0, eval.helpfulnessScore)));
+        logger.info("   ✅ Consistency: {}/5.0 (issues: {})", 
+            String.format("%.2f", Math.max(0, eval.consistencyScore)), 
+            Math.max(0, eval.consistencyIssues));
+        logger.info("   🚨 Hallucination Score: {} (count: {})", 
+            String.format("%.2f", Math.max(0, eval.hallucinationScore)), 
+            Math.max(0, eval.hallucinationCount));
         logger.info("   📊 Code Structure: {}", eval.codeStructureValid ? "Valid" : "Invalid");
-        logger.info("   🧮 Tokens: {} ({:.1f}% of quota)", eval.tokenCount, eval.tokenUsagePercentage);
-        logger.info("   📉 Penalties: Consistency={:.2f}, Hallucination={:.2f}", 
-            eval.consistencyPenalty, eval.hallucinationPenalty);
-        logger.info("   ⭐ Final Rating: {:.2f}/5.0 - {}", eval.finalRating, eval.verdict);
+        logger.info("   🧮 Tokens: {} ({}% of quota)", 
+            Math.max(0, eval.tokenCount), 
+            String.format("%.1f", Math.max(0, eval.tokenUsagePercentage)));
+        logger.info("   📉 Penalties: Consistency={}, Hallucination={}", 
+            String.format("%.2f", Math.max(0, eval.consistencyPenalty)), 
+            String.format("%.2f", Math.max(0, eval.hallucinationPenalty)));
+        logger.info("   ⭐ Final Rating: {}/5.0 - {}", 
+            String.format("%.2f", Math.max(0, eval.finalRating)), 
+            eval.verdict != null ? eval.verdict : "Unknown");
     }
     
     // ============ Inner Classes ============

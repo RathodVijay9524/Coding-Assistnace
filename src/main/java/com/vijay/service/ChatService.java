@@ -1,8 +1,10 @@
 package com.vijay.service;
 
 import com.vijay.context.TraceContext;
+import com.vijay.context.GlobalBrainContext;
 import com.vijay.dto.ChatRequest;
 import com.vijay.dto.ChatResponse;
+import com.vijay.dto.ReasoningState;
 import com.vijay.manager.AiToolProvider;
 import com.vijay.tools.ToolFinderService;
 import org.slf4j.Logger;
@@ -60,6 +62,14 @@ public class ChatService {
             request.getMessage().substring(0, 60) + "..." : request.getMessage());
 
         try {
+            // STEP 0.5: Initialize GlobalBrainContext for this request
+            ReasoningState reasoningState = new ReasoningState();
+            reasoningState.setUserQuery(request.getMessage());
+            GlobalBrainContext.setReasoningState(reasoningState);
+            GlobalBrainContext.put("traceId", traceId);
+            GlobalBrainContext.put("provider", provider);
+            logger.info("[{}]    🧠 GlobalBrainContext initialized", traceId);
+            
             // STEP 1: Get ChatClient for provider
             ChatClient chatClient = getChatClientForProvider(provider);
             logger.info("[{}]    ✅ Got ChatClient for provider: {}", traceId, provider);
@@ -67,6 +77,9 @@ public class ChatService {
             // STEP 2: Find required tools using RAG (ToolFinderService)
             List<String> requiredToolNames = toolFinder.findToolsFor(request.getMessage());
             logger.info("[{}]    🔧 Tools needed: {} - {}", traceId, requiredToolNames.size(), requiredToolNames);
+            
+            // Store suggested tools in ReasoningState for advisors to use
+            reasoningState.setSuggestedTools(requiredToolNames);
             
             // Convert List<String> to String[] for .toolNames() API
             String[] toolNamesArray = requiredToolNames.toArray(new String[0]);
@@ -93,8 +106,10 @@ public class ChatService {
             logger.error("[{}] ❌ Error processing chat request: {}", traceId, e.getMessage(), e);
             throw new RuntimeException("Error processing request: " + e.getMessage(), e);
         } finally {
-            // STEP 4: Clean up trace context
+            // STEP 4: Clean up contexts
+            GlobalBrainContext.clear();
             TraceContext.clear();
+            logger.info("[{}] 🧹 Contexts cleared", traceId);
         }
     }
     
