@@ -1,30 +1,40 @@
 package com.vijay.config;
 
-import com.vijay.manager.AdvancedCapabilitiesAdvisor;
-import com.vijay.manager.ChainOfThoughtPlannerAdvisor;
-import com.vijay.manager.CognitiveBiasAdvisor;
 import com.vijay.manager.ConductorAdvisor;
-import com.vijay.manager.ConversationMemoryAdvisor;
 import com.vijay.manager.DynamicContextAdvisor;
 import com.vijay.manager.ToolCallAdvisor;
-import com.vijay.manager.EmotionalContextAdvisor;
-import com.vijay.manager.EmotionalResponseAdvisor;
 import com.vijay.manager.PersonalityAdvisor;
-import com.vijay.manager.TheoryOfMindAdvisor;
-import com.vijay.manager.ThoughtStreamAdvisor;
-import com.vijay.manager.ErrorPredictionAdvisor;
-import com.vijay.manager.KnowledgeGraphAdvisor;
-import com.vijay.manager.LearningSystemAdvisor;
-import com.vijay.manager.LearningGrowthAdvisor;
-import com.vijay.manager.ResponseSummarizerAdvisor;
-import com.vijay.manager.SelfRefineEvaluationAdvisor;
 import com.vijay.manager.SelfRefineV3Advisor;
-import com.vijay.manager.UserProfilingAdvisor;
 import com.vijay.service.FileHashTracker;
 import com.vijay.service.IncrementalIndexer;
 import com.vijay.service.IncrementalSummarizer;
 import com.vijay.service.IncrementalGraphCalculator;
 import com.vijay.tools.AIAgentToolService;
+import com.vijay.tools.ProjectAnalysisToolService;
+import com.vijay.tools.CodeGenerationToolService;
+import com.vijay.tools.CodeQualityToolService;
+import com.vijay.tools.CodeReviewToolService;
+import com.vijay.tools.TestGenerationToolService;
+import com.vijay.tools.RefactoringToolService;
+import com.vijay.tools.BugDetectionToolService;
+import com.vijay.tools.PerformanceAnalysisToolService;
+import com.vijay.tools.SecurityScanningToolService;
+import com.vijay.tools.DocumentationGenerationToolService;
+import com.vijay.tools.SpringConfigToolService;
+import com.vijay.tools.SpringContextAnalysisToolService;
+import com.vijay.tools.SpringBestPracticesToolService;
+import com.vijay.tools.SpringDependencyAnalysisToolService;
+import com.vijay.tools.FileWatchingToolService;
+import com.vijay.tools.LiveFeedbackToolService;
+import com.vijay.tools.ChangeAnalysisToolService;
+import com.vijay.tools.DatabaseSchemaToolService;
+import com.vijay.tools.MigrationScriptToolService;
+import com.vijay.tools.QueryOptimizationToolService;
+import com.vijay.tools.DockerConfigToolService;
+import com.vijay.tools.CICDPipelineToolService;
+import com.vijay.tools.EnvironmentConfigToolService;
+import com.vijay.tools.NLToCodeToolService;
+import com.vijay.tools.GenerateFromDescriptionToolService;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -104,13 +114,43 @@ public class AIProviderConfig {
                                ToolCallAdvisor toolCall,
                                SelfRefineV3Advisor judge,
                                PersonalityAdvisor personality,
-                               AIAgentToolService aiAgentToolService) {
-        logger.info("🎼 Creating UNIFIED CONDUCTOR Chat Client - 5 Core Brains + Dynamic RAG");
-        logger.info("   Brain 0: ConductorAdvisor (The Unified Master Planner) ⭐ NEW");
+                               AIAgentToolService aiAgentToolService,
+                               ProjectAnalysisToolService projectAnalysisTool,
+                               CodeGenerationToolService codeGenerationTool,
+                               CodeQualityToolService codeQualityTool,
+                               CodeReviewToolService codeReviewTool,
+                               TestGenerationToolService testGenerationTool,
+                               RefactoringToolService refactoringTool,
+                               BugDetectionToolService bugDetectionTool,
+                               PerformanceAnalysisToolService performanceAnalysisTool,
+                               SecurityScanningToolService securityScanningTool,
+                               DocumentationGenerationToolService documentationTool,
+                               SpringConfigToolService springConfigTool,
+                               SpringContextAnalysisToolService springContextTool,
+                               SpringBestPracticesToolService springBestPracticesTool,
+                               SpringDependencyAnalysisToolService springDependencyTool,
+                               FileWatchingToolService fileWatchingTool,
+                               LiveFeedbackToolService liveFeedbackTool,
+                               ChangeAnalysisToolService changeAnalysisTool,
+                               DatabaseSchemaToolService databaseSchemaTool,
+                               MigrationScriptToolService migrationScriptTool,
+                               QueryOptimizationToolService queryOptimizationTool,
+                               DockerConfigToolService dockerConfigTool,
+                               CICDPipelineToolService cicdPipelineTool,
+                               EnvironmentConfigToolService environmentConfigTool,
+                               NLToCodeToolService nlToCodeTool,
+                               GenerateFromDescriptionToolService generateFromDescriptionTool) {
+        logger.info("🎼 Creating UNIFIED CONDUCTOR Chat Client - 5 Core Brains + 25 AI Tools + Dynamic RAG");
+        logger.info("   Brain 0: ConductorAdvisor (The Unified Master Planner) ⭐");
         logger.info("   Brain 1: DynamicContextAdvisor (The Context Fetcher)");
-        logger.info("   Brain 2: ToolCallAdvisor (Plan-Aware Tool Executor) ⭐ NEW");
+        logger.info("   Brain 2: ToolCallAdvisor (Plan-Aware Tool Executor) ⭐");
         logger.info("   Brain 13: SelfRefineV3Advisor (The Judge)");
         logger.info("   Brain 14: PersonalityAdvisor (The Voice)");
+        logger.info("   + 25 AI Tools:");
+        logger.info("     Week 1: ProjectAnalysis, CodeGeneration, CodeQuality, CodeReview, TestGeneration");
+        logger.info("     Week 2: Refactoring, BugDetection, PerformanceAnalysis, SecurityScanning, Documentation");
+        logger.info("     Week 3: SpringConfig, SpringContext, SpringBestPractices, SpringDependency, FileWatching, LiveFeedback, ChangeAnalysis");
+        logger.info("     Week 4: DatabaseSchema, MigrationScript, QueryOptimization, DockerConfig, CICDPipeline, EnvironmentConfig, NLToCode, GenerateFromDescription");
         logger.info("   + Specialist Brains (3-12) dynamically selected via RAG");
         
         return ChatClient.builder(ollamaChatModel)
@@ -121,7 +161,34 @@ public class AIProviderConfig {
                     judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
                     personality         // Brain 14: Personality (order: 800) - Applies human touch
                 )
-                .defaultTools(aiAgentToolService)
+                .defaultTools(
+                    aiAgentToolService,
+                    projectAnalysisTool,
+                    codeGenerationTool,
+                    codeQualityTool,
+                    codeReviewTool,
+                    testGenerationTool,
+                    refactoringTool,
+                    bugDetectionTool,
+                    performanceAnalysisTool,
+                    securityScanningTool,
+                    documentationTool,
+                    springConfigTool,
+                    springContextTool,
+                    springBestPracticesTool,
+                    springDependencyTool,
+                    fileWatchingTool,
+                    liveFeedbackTool,
+                    changeAnalysisTool,
+                    databaseSchemaTool,
+                    migrationScriptTool,
+                    queryOptimizationTool,
+                    dockerConfigTool,
+                    cicdPipelineTool,
+                    environmentConfigTool,
+                    nlToCodeTool,
+                    generateFromDescriptionTool
+                )
                 .build();
     }
 
@@ -193,17 +260,11 @@ public class AIProviderConfig {
     @Bean(name = "haggingFaceChatClient")
     ChatClient huggingfaceChatClient(HuggingfaceChatModel huggingfaceChatModel,
                                      ChatMemory chatMemory,
-                                     KnowledgeGraphAdvisor knowledgeGraphAdvisor,
-                                     ResponseSummarizerAdvisor summarizerAdvisor,
-                                     SelfRefineEvaluationAdvisor refineAdvisor,
                                      AIAgentToolService aiAgentToolService) {
         logger.info("Creating HaggingFace Chat Client with MCP tools");
         return ChatClient.builder(huggingfaceChatModel)
                 .defaultAdvisors(
-                        MessageChatMemoryAdvisor.builder(chatMemory).build(),  // Memory
-                        knowledgeGraphAdvisor,     // Brain 0: Knowledge Graph (order: 100)
-                        summarizerAdvisor,         // Brain 2: Summarizer (order: 500)
-                        refineAdvisor              // Brain 3: Reasoner (order: 1000)
+                        MessageChatMemoryAdvisor.builder(chatMemory).build()  // Memory
                 )
                 .defaultTools(aiAgentToolService)
                 .build();
