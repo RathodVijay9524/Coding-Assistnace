@@ -1,12 +1,15 @@
 package com.vijay.tools;
 
-
+import com.vijay.context.GlobalBrainContext;
+import com.vijay.context.TraceContext;
+import com.vijay.dto.ReasoningState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore; // <-- This import will now work
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +26,8 @@ public class ToolFinderService {
     }
 
     public List<String> findToolsFor(String prompt) {
+        String traceId = TraceContext.getTraceId();
+        
         SearchRequest request = SearchRequest.builder()
                 .query(prompt)
                 .topK(3)
@@ -35,7 +40,16 @@ public class ToolFinderService {
                 .map(doc -> (String) doc.getMetadata().get("toolName"))
                 .collect(Collectors.toList());
 
-        logger.info("SmartFinder: Found tools {} for prompt: {}", toolNames, prompt);
+        logger.info("[{}] 🔧 ToolFinder: Found {} tools for prompt", traceId, toolNames.size());
+        logger.info("[{}]    Tools: {}", traceId, toolNames);
+        
+        // PHASE 1 INTEGRATION: Create ReasoningState and store in GlobalBrainContext
+        ReasoningState state = new ReasoningState(prompt);
+        state.setSuggestedTools(toolNames);
+        GlobalBrainContext.setReasoningState(state);
+        
+        logger.info("[{}]    ✅ ReasoningState created and stored in GlobalBrainContext", traceId);
+        
         return toolNames;
     }
 }

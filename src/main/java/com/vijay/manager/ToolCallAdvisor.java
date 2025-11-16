@@ -1,6 +1,9 @@
 package com.vijay.manager;
 
+import com.vijay.context.GlobalBrainContext;
+import com.vijay.context.TraceContext;
 import com.vijay.dto.AgentPlan;
+import com.vijay.dto.ReasoningState;
 import com.vijay.util.AgentPlanHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,40 +60,56 @@ public class ToolCallAdvisor implements CallAdvisor, IAgentBrain {
     
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
-        logger.info("🔧 Brain 2 (Tool Call): Checking if tools are needed...");
+        String traceId = TraceContext.getTraceId();
+        logger.info("[{}] 🔧 Brain 2 (Tool Call): Checking if tools are needed...", traceId);
         
         try {
             // STEP 1: Read the master plan from Brain 0 (ConductorAdvisor)
             AgentPlan masterPlan = AgentPlanHolder.getPlan();
             
             if (masterPlan == null) {
-                logger.warn("   ⚠️ No master plan found - skipping tool execution");
+                logger.warn("[{}]    ⚠️ No master plan found - skipping tool execution", traceId);
                 return chain.nextCall(request);
             }
             
             // STEP 2: Check if tools are required
             if (!masterPlan.requiresTools()) {
-                logger.info("   ℹ️ No tools required in plan - skipping tool execution");
-                logger.info("      Plan Intent: {}", masterPlan.getIntent());
+                logger.info("[{}]    ℹ️ No tools required in plan - skipping tool execution", traceId);
+                logger.info("[{}]       Plan Intent: {}", traceId, masterPlan.getIntent());
                 return chain.nextCall(request);
             }
             
             // STEP 3: Log tools that will be executed
-            logger.info("   🔧 Tools required by plan:");
+            logger.info("[{}]    🔧 Tools required by plan:", traceId);
             for (String tool : masterPlan.getRequiredTools()) {
-                logger.info("      - {}", tool);
+                logger.info("[{}]       - {}", traceId, tool);
+            }
+            
+            // PHASE 1 INTEGRATION: Check ReasoningState for approved tools
+            ReasoningState state = GlobalBrainContext.getReasoningState();
+            if (state != null && state.hasApprovedTools()) {
+                logger.info("[{}]    ✅ Approved tools from Conductor: {}", traceId, state.getApprovedTools());
+                
+                // Verify all required tools are approved
+                for (String tool : masterPlan.getRequiredTools()) {
+                    if (!state.isToolApproved(tool)) {
+                        logger.warn("[{}]    ⚠️ Tool NOT approved by Conductor: {}", traceId, tool);
+                    }
+                }
+            } else {
+                logger.warn("[{}]    ⚠️ No approved tools in ReasoningState", traceId);
             }
             
             // STEP 4: Continue to next advisor
             // The LLM will see the required tools and can use them if needed
-            logger.info("   ✅ Tools available for execution");
+            logger.info("[{}]    ✅ Tools available for execution", traceId);
             ChatClientResponse response = chain.nextCall(request);
             
-            logger.info("✅ Brain 2: Tool call processing complete");
+            logger.info("[{}] ✅ Brain 2: Tool call processing complete", traceId);
             return response;
             
         } catch (Exception e) {
-            logger.error("❌ Brain 2: Error in tool call processing - {}", e.getMessage());
+            logger.error("[{}] ❌ Brain 2: Error in tool call processing - {}", traceId, e.getMessage());
             // Continue chain even if tool processing fails
             return chain.nextCall(request);
         }

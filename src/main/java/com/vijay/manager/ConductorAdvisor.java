@@ -1,6 +1,9 @@
 package com.vijay.manager;
 
+import com.vijay.context.GlobalBrainContext;
+import com.vijay.context.TraceContext;
 import com.vijay.dto.AgentPlan;
+import com.vijay.dto.ReasoningState;
 import com.vijay.util.AgentPlanHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,13 +66,14 @@ public class ConductorAdvisor implements CallAdvisor, IAgentBrain {
     
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
-        logger.info("🎼 Brain 0 (Unified Conductor): Creating master plan...");
+        String traceId = TraceContext.getTraceId();
+        logger.info("[{}] 🎼 Brain 0 (Unified Conductor): Creating master plan...", traceId);
         
         try {
             String userQuery = extractUserMessage(request);
             
             if (userQuery.isEmpty()) {
-                logger.warn("⚠️ Brain 0: Empty query, using default plan");
+                logger.warn("[{}] ⚠️ Brain 0: Empty query, using default plan", traceId);
                 AgentPlan defaultPlan = createDefaultPlan();
                 return storeAndContinue(request, chain, defaultPlan);
             }
@@ -108,11 +112,20 @@ public class ConductorAdvisor implements CallAdvisor, IAgentBrain {
             // Log plan details
             logger.info(formatPlanDetails(masterPlan));
             
+            // PHASE 1 INTEGRATION: Approve tools in ReasoningState
+            ReasoningState state = GlobalBrainContext.getReasoningState();
+            if (state != null) {
+                state.approveTools(requiredTools);  // FINAL DECISION
+                logger.info("[{}]    ✅ Conductor APPROVED tools: {}", traceId, requiredTools);
+            } else {
+                logger.warn("[{}]    ⚠️ No ReasoningState found in GlobalBrainContext", traceId);
+            }
+            
             // STEP 6: Store and continue
             return storeAndContinue(request, chain, masterPlan);
             
         } catch (Exception e) {
-            logger.error("❌ Brain 0: Error creating master plan - {}", e.getMessage());
+            logger.error("[{}] ❌ Brain 0: Error creating master plan - {}", traceId, e.getMessage());
             AgentPlan fallbackPlan = createDefaultPlan();
             return storeAndContinue(request, chain, fallbackPlan);
         }

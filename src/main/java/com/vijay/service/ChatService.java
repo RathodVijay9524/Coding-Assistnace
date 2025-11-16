@@ -1,5 +1,6 @@
 package com.vijay.service;
 
+import com.vijay.context.TraceContext;
 import com.vijay.dto.ChatRequest;
 import com.vijay.dto.ChatResponse;
 import com.vijay.manager.AiToolProvider;
@@ -50,23 +51,27 @@ public class ChatService {
     }
 
     public ChatResponse processChat(String provider, ChatRequest request) {
-        logger.info("🧠 ChatService (Dumb Orchestrator): Processing message...");
-        logger.info("   📝 Message: {}", request.getMessage().length() > 60 ? 
+        // STEP 0: Initialize trace context for request tracking
+        TraceContext.initialize();
+        String traceId = TraceContext.getTraceId();
+        
+        logger.info("[{}] 🧠 ChatService (Dumb Orchestrator): Processing message...", traceId);
+        logger.info("[{}]    📝 Message: {}", traceId, request.getMessage().length() > 60 ? 
             request.getMessage().substring(0, 60) + "..." : request.getMessage());
 
         try {
             // STEP 1: Get ChatClient for provider
             ChatClient chatClient = getChatClientForProvider(provider);
-            logger.info("   ✅ Got ChatClient for provider: {}", provider);
+            logger.info("[{}]    ✅ Got ChatClient for provider: {}", traceId, provider);
 
             // STEP 2: Find required tools using RAG (ToolFinderService)
             List<String> requiredToolNames = toolFinder.findToolsFor(request.getMessage());
-            logger.info("   🔧 Tools needed: {} - {}", requiredToolNames.size(), requiredToolNames);
+            logger.info("[{}]    🔧 Tools needed: {} - {}", traceId, requiredToolNames.size(), requiredToolNames);
             
             // Convert List<String> to String[] for .toolNames() API
             String[] toolNamesArray = requiredToolNames.toArray(new String[0]);
 
-            logger.info("   🧠 Delegating to Hybrid Brain Chain (5 Core + Dynamic Specialist)...");
+            logger.info("[{}]    🧠 Delegating to Hybrid Brain Chain (5 Core + Dynamic Specialist)...", traceId);
             
             // STEP 3: Call ChatClient with tools
             // The Unified Conductor (Brain 0) will create the master plan
@@ -77,15 +82,19 @@ public class ChatService {
                     .call()
                     .content();
 
-            logger.info("✅ Response generated successfully");
+            logger.info("[{}] ✅ Response generated successfully (elapsed: {})", 
+                traceId, TraceContext.getElapsedTimeFormatted());
             return new ChatResponse(response, provider, toolNamesArray);
 
         } catch (IllegalArgumentException e) {
-            logger.error("❌ Invalid provider: {}", provider);
+            logger.error("[{}] ❌ Invalid provider: {}", traceId, provider);
             throw e;
         } catch (Exception e) {
-            logger.error("❌ Error processing chat request: {}", e.getMessage(), e);
+            logger.error("[{}] ❌ Error processing chat request: {}", traceId, e.getMessage(), e);
             throw new RuntimeException("Error processing request: " + e.getMessage(), e);
+        } finally {
+            // STEP 4: Clean up trace context
+            TraceContext.clear();
         }
     }
     
