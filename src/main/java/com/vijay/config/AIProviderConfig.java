@@ -11,38 +11,6 @@ import com.vijay.service.IncrementalIndexer;
 import com.vijay.service.IncrementalSummarizer;
 import com.vijay.service.IncrementalGraphCalculator;
 import com.vijay.tools.AIAgentToolService;
-import com.vijay.tools.ProjectAnalysisToolService;
-import com.vijay.tools.CodeGenerationToolService;
-import com.vijay.tools.CodeQualityToolService;
-import com.vijay.tools.CodeReviewToolService;
-import com.vijay.tools.TestGenerationToolService;
-import com.vijay.tools.RefactoringToolService;
-import com.vijay.tools.BugDetectionToolService;
-import com.vijay.tools.PerformanceAnalysisToolService;
-import com.vijay.tools.SecurityScanningToolService;
-import com.vijay.tools.DocumentationGenerationToolService;
-import com.vijay.tools.SpringConfigToolService;
-import com.vijay.tools.SpringContextAnalysisToolService;
-import com.vijay.tools.SpringBestPracticesToolService;
-import com.vijay.tools.SpringDependencyAnalysisToolService;
-import com.vijay.tools.FileWatchingToolService;
-import com.vijay.tools.LiveFeedbackToolService;
-import com.vijay.tools.ChangeAnalysisToolService;
-import com.vijay.tools.DatabaseSchemaToolService;
-import com.vijay.tools.MigrationScriptToolService;
-import com.vijay.tools.QueryOptimizationToolService;
-import com.vijay.tools.DockerConfigToolService;
-import com.vijay.tools.CICDPipelineToolService;
-import com.vijay.tools.EnvironmentConfigToolService;
-import com.vijay.tools.NLToCodeToolService;
-import com.vijay.tools.GenerateFromDescriptionToolService;
-import com.vijay.tools.MultiFileOperationToolService;
-import com.vijay.tools.ArchitectureSuggestionToolService;
-import com.vijay.tools.AdvancedTestGenerationToolService;
-import com.vijay.tools.AdvancedCodeAnalysisToolService;
-import com.vijay.tools.AdvancedRefactoringToolService;
-import com.vijay.service.ASTAnalysisService;
-import com.vijay.service.MLPatternDetectionService;
 import org.springframework.ai.ollama.OllamaEmbeddingModel;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -59,7 +27,6 @@ import org.springframework.ai.huggingface.HuggingfaceChatModel;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -122,32 +89,8 @@ public class AIProviderConfig {
                                ToolCallAdvisor toolCall,
                                SelfRefineV3Advisor judge,
                                PersonalityAdvisor personality,
-                               AIAgentToolService aiAgentToolService,
-                               ProjectAnalysisToolService projectAnalysisTool,
-                               CodeGenerationToolService codeGenerationTool,
-                               CodeQualityToolService codeQualityTool,
-                               CodeReviewToolService codeReviewTool,
-                               TestGenerationToolService testGenerationTool,
-                               RefactoringToolService refactoringTool,
-                               BugDetectionToolService bugDetectionTool,
-                               PerformanceAnalysisToolService performanceAnalysisTool,
-                               SecurityScanningToolService securityScanningTool,
-                               DocumentationGenerationToolService documentationTool,
-                               SpringConfigToolService springConfigTool,
-                               SpringContextAnalysisToolService springContextTool,
-                               SpringBestPracticesToolService springBestPracticesTool,
-                               SpringDependencyAnalysisToolService springDependencyTool,
-                               FileWatchingToolService fileWatchingTool,
-                               LiveFeedbackToolService liveFeedbackTool,
-                               ChangeAnalysisToolService changeAnalysisTool,
-                               DatabaseSchemaToolService databaseSchemaTool,
-                               MigrationScriptToolService migrationScriptTool,
-                               QueryOptimizationToolService queryOptimizationTool,
-                               DockerConfigToolService dockerConfigTool,
-                               CICDPipelineToolService cicdPipelineTool,
-                               EnvironmentConfigToolService environmentConfigTool,
-                               NLToCodeToolService nlToCodeTool,
-                               GenerateFromDescriptionToolService generateFromDescriptionTool) {
+                                java.util.List<AiToolProvider> allToolProviders
+                               ) {
         logger.info("🎼 Creating UNIFIED CONDUCTOR Chat Client - 5 Core Brains + 25 AI Tools + Dynamic RAG");
         logger.info("   Brain 0: ConductorAdvisor (The Unified Master Planner) ⭐");
         logger.info("   Brain 1: DynamicContextAdvisor (The Context Fetcher)");
@@ -169,34 +112,7 @@ public class AIProviderConfig {
                     judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
                     personality         // Brain 14: Personality (order: 800) - Applies human touch
                 )
-                .defaultTools(
-                    aiAgentToolService,
-                    projectAnalysisTool,
-                    codeGenerationTool,
-                    codeQualityTool,
-                    codeReviewTool,
-                    testGenerationTool,
-                    refactoringTool,
-                    bugDetectionTool,
-                    performanceAnalysisTool,
-                    securityScanningTool,
-                    documentationTool,
-                    springConfigTool,
-                    springContextTool,
-                    springBestPracticesTool,
-                    springDependencyTool,
-                    fileWatchingTool,
-                    liveFeedbackTool,
-                    changeAnalysisTool,
-                    databaseSchemaTool,
-                    migrationScriptTool,
-                    queryOptimizationTool,
-                    dockerConfigTool,
-                    cicdPipelineTool,
-                    environmentConfigTool,
-                    nlToCodeTool,
-                    generateFromDescriptionTool
-                )
+                .defaultTools((Object[]) allToolProviders.toArray(new AiToolProvider[0]))
                 .build();
     }
 
