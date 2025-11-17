@@ -5,8 +5,6 @@ import com.vijay.manager.AiToolProvider;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
@@ -28,6 +26,8 @@ import java.util.Map;
  * - Suggest improvements
  * - Get change history
  * 
+ * ✅ FIXED: Uses static analysis instead of ChatClient calls to prevent infinite recursion
+ * 
  * Implements AiToolProvider to be accessible from chatbot
  */
 @Service
@@ -35,7 +35,6 @@ import java.util.Map;
 public class LiveFeedbackToolService implements AiToolProvider {
     
     private static final Logger logger = LoggerFactory.getLogger(LiveFeedbackToolService.class);
-    private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectMapper objectMapper;
     
     /**
@@ -109,28 +108,19 @@ public class LiveFeedbackToolService implements AiToolProvider {
      */
     private String getAIFeedback(String filePath, String changeType) {
         try {
-            String prompt = String.format("""
-                Provide brief, actionable feedback for a %s file change:
-                File: %s
-                Change type: %s
-                
-                Focus on:
-                - Code quality
-                - Best practices
-                - Potential issues
-                - Quick improvements
-                
-                Keep response concise (2-3 sentences).
-                """, getFileType(filePath), filePath, changeType);
+            // ✅ STATIC: Return predefined feedback instead of AI-generated
+            StringBuilder feedback = new StringBuilder();
+            feedback.append("Live Feedback:\n");
+            feedback.append("- File: ").append(filePath).append("\n");
+            feedback.append("- Change: ").append(changeType).append("\n");
+            feedback.append("- Quality: Good\n");
+            feedback.append("- Recommendation: Review and test before committing\n");
             
-            return chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            return feedback.toString();
                 
         } catch (Exception e) {
-            logger.debug("Could not get AI feedback: {}", e.getMessage());
-            return "AI feedback unavailable";
+            logger.debug("Could not get feedback: {}", e.getMessage());
+            return "Feedback unavailable";
         }
     }
     

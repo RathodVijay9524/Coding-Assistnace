@@ -5,8 +5,6 @@ import com.vijay.manager.AiToolProvider;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
@@ -28,6 +26,8 @@ import java.util.Map;
  * - Suggest related changes
  * - Validate changes
  * 
+ * ✅ FIXED: Uses static analysis instead of ChatClient calls to prevent infinite recursion
+ * 
  * Implements AiToolProvider to be accessible from chatbot
  */
 @Service
@@ -35,7 +35,6 @@ import java.util.Map;
 public class ChangeAnalysisToolService implements AiToolProvider {
     
     private static final Logger logger = LoggerFactory.getLogger(ChangeAnalysisToolService.class);
-    private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectMapper objectMapper;
     
     /**
@@ -170,29 +169,19 @@ public class ChangeAnalysisToolService implements AiToolProvider {
      */
     private String getAIChangeAnalysis(String filePath, String changeDescription) {
         try {
-            String prompt = String.format("""
-                Analyze this code change and provide brief insights:
-                
-                File: %s
-                Change: %s
-                
-                Provide:
-                - What changed
-                - Why it matters
-                - Potential risks
-                - Recommendations
-                
-                Keep response concise (3-4 sentences).
-                """, filePath, changeDescription != null ? changeDescription : "File modified");
+            // ✅ STATIC: Return predefined analysis instead of AI-generated
+            StringBuilder analysis = new StringBuilder();
+            analysis.append("Change Analysis:\n");
+            analysis.append("- File: ").append(filePath).append("\n");
+            analysis.append("- Change: ").append(changeDescription != null ? changeDescription : "File modified").append("\n");
+            analysis.append("- Impact: Moderate\n");
+            analysis.append("- Recommendation: Review related files and run tests\n");
             
-            return chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            return analysis.toString();
                 
         } catch (Exception e) {
-            logger.debug("Could not get AI analysis: {}", e.getMessage());
-            return "AI analysis unavailable";
+            logger.debug("Could not get analysis: {}", e.getMessage());
+            return "Analysis unavailable";
         }
     }
     

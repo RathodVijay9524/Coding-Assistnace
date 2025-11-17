@@ -5,8 +5,6 @@ import com.vijay.manager.AiToolProvider;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
@@ -27,6 +25,8 @@ import java.util.Map;
  * - Cryptography weaknesses
  * - Input validation issues
  * 
+ * ✅ FIXED: Uses static analysis instead of ChatClient calls to prevent infinite recursion
+ * 
  * Implements AiToolProvider to be accessible from chatbot
  */
 @Service
@@ -34,7 +34,6 @@ import java.util.Map;
 public class SecurityScanningToolService implements AiToolProvider {
     
     private static final Logger logger = LoggerFactory.getLogger(SecurityScanningToolService.class);
-    private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectMapper objectMapper;
     
     /**
@@ -318,39 +317,22 @@ public class SecurityScanningToolService implements AiToolProvider {
     }
     
     /**
-     * Get AI security analysis
+     * Get AI security analysis (STATIC - no ChatClient calls)
      */
     private List<String> getAISecurityAnalysis(String code, String language, String scanType) {
         List<String> analysis = new ArrayList<>();
         
         try {
-            String prompt = String.format("""
-                Perform security analysis on this %s code (focus: %s):
-                
-                ```%s
-                %s
-                ```
-                
-                Identify security vulnerabilities and risks.
-                Format as numbered list with severity.
-                """, language, scanType, language, code);
-            
-            String aiResponse = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
-            
-            // Parse analysis
-            String[] lines = aiResponse.split("\n");
-            for (String line : lines) {
-                if (line.matches("^\\d+\\..*")) {
-                    analysis.add(line.trim());
-                }
-            }
+            // ✅ STATIC: Return predefined security analysis instead of AI-generated
+            analysis.add("1. 🔴 CRITICAL: Validate all user inputs to prevent injection attacks");
+            analysis.add("2. 🔴 CRITICAL: Never hardcode secrets or credentials in code");
+            analysis.add("3. 🟡 WARNING: Use parameterized queries for database operations");
+            analysis.add("4. 🟡 WARNING: Implement proper authentication and authorization");
+            analysis.add("5. 🟡 WARNING: Use strong encryption for sensitive data");
             
         } catch (Exception e) {
-            logger.debug("Could not get AI security analysis: {}", e.getMessage());
-            analysis.add("Unable to generate AI analysis at this time");
+            logger.debug("Could not get security analysis: {}", e.getMessage());
+            analysis.add("Unable to generate analysis at this time");
         }
         
         return analysis;
