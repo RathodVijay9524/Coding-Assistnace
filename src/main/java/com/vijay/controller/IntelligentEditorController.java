@@ -5,6 +5,8 @@ import com.vijay.editing.EditSuggestionGenerator;
 import com.vijay.editing.LiveCodeEditor;
 import com.vijay.editing.InlineSuggestionEngine;
 import com.vijay.editing.SmartCompletionEngine;
+import com.vijay.editing.RefactoringAssistant;
+import com.vijay.editing.CodeTransformationEngine;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +36,8 @@ public class IntelligentEditorController {
     private final LiveCodeEditor liveCodeEditor;
     private final InlineSuggestionEngine inlineSuggestionEngine;
     private final SmartCompletionEngine smartCompletionEngine;
+    private final RefactoringAssistant refactoringAssistant;
+    private final CodeTransformationEngine codeTransformationEngine;
     
     /**
      * Analyze selected code
