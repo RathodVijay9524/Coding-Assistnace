@@ -2,11 +2,13 @@ package com.vijay.service;
 
 import com.vijay.context.TraceContext;
 import com.vijay.context.GlobalBrainContext;
+import com.vijay.dto.AgentPlan;
 import com.vijay.dto.ChatRequest;
 import com.vijay.dto.ChatResponse;
 import com.vijay.dto.ReasoningState;
 import com.vijay.manager.AiToolProvider;
 import com.vijay.tools.ToolFinderService;
+import com.vijay.util.AgentPlanHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -56,10 +58,10 @@ public class ChatService {
         // STEP 0: Initialize trace context for request tracking
         TraceContext.initialize();
         String traceId = TraceContext.getTraceId();
-        
+
         logger.info("[{}] 🧠 ChatService (Dumb Orchestrator): Processing message...", traceId);
-        logger.info("[{}]    📝 Message: {}", traceId, request.getMessage().length() > 60 ? 
-            request.getMessage().substring(0, 60) + "..." : request.getMessage());
+        logger.info("[{}]    📝 Message: {}", traceId, request.getMessage().length() > 60 ?
+                request.getMessage().substring(0, 60) + "..." : request.getMessage());
 
         try {
             // STEP 0.5: Initialize GlobalBrainContext for this request
@@ -69,35 +71,46 @@ public class ChatService {
             GlobalBrainContext.put("traceId", traceId);
             GlobalBrainContext.put("provider", provider);
             logger.info("[{}]    🧠 GlobalBrainContext initialized", traceId);
-            
+
             // STEP 1: Get ChatClient for provider
             ChatClient chatClient = getChatClientForProvider(provider);
             logger.info("[{}]    ✅ Got ChatClient for provider: {}", traceId, provider);
 
-            // STEP 2: Find required tools using RAG (ToolFinderService)
-            List<String> requiredToolNames = toolFinder.findToolsFor(request.getMessage());
-            logger.info("[{}]    🔧 Tools needed: {} - {}", traceId, requiredToolNames.size(), requiredToolNames);
-            
-            // Store suggested tools in ReasoningState for advisors to use
-            reasoningState.setSuggestedTools(requiredToolNames);
-            
-            // Convert List<String> to String[] for .toolNames() API
-            String[] toolNamesArray = requiredToolNames.toArray(new String[0]);
+            // STEP 2: Find suggested tools using RAG (ToolFinderService)
+            // These are SUGGESTIONS - Conductor will approve/reject in Brain 0
+            List<String> suggestedToolNames = toolFinder.findToolsFor(request.getMessage());
+            logger.info("[{}]    🔧 Tools suggested by ToolFinder: {} - {}",
+                    traceId, suggestedToolNames.size(), suggestedToolNames);
 
-            logger.info("[{}]    🧠 Delegating to Hybrid Brain Chain (5 Core + Dynamic Specialist)...", traceId);
-            
-            // STEP 3: Call ChatClient with tools
-            // The Unified Conductor (Brain 0) will create the master plan
-            // All downstream brains will read the plan and act accordingly
+            // Store suggested tools in ReasoningState for Conductor to review
+            reasoningState.setSuggestedTools(suggestedToolNames);
+
+            // ✅ Convert to array for .toolNames() API
+            String[] suggestedToolsArray = suggestedToolNames.toArray(new String[0]);
+
+            logger.info("[{}]    🧠 Delegating to Hybrid Brain Chain (Conductor will filter tools)...", traceId);
+
+            // STEP 3: Call ChatClient with ALL suggested tools
+            // The Conductor (Brain 0) will approve/reject them
+            // The ToolCallAdvisor (Brain 2) will ENFORCE only approved tools are executed
             String response = chatClient.prompt()
                     .user(request.getMessage())
-                    .toolNames(toolNamesArray)  // ← Pass required tools to LLM
+                    .toolNames(suggestedToolsArray)  // ← Pass ALL suggested tools to LLM
                     .call()
                     .content();
 
-            logger.info("[{}] ✅ Response generated successfully (elapsed: {})", 
-                traceId, TraceContext.getElapsedTimeFormatted());
-            return new ChatResponse(response, provider, toolNamesArray);
+            // ✅ STEP 4: Get the actually USED tools from the plan
+            AgentPlan plan = AgentPlanHolder.getPlan();
+            String[] actuallyUsedTools = (plan != null && plan.getRequiredTools() != null)
+                    ? plan.getRequiredTools().toArray(new String[0])
+                    : new String[0];
+
+            logger.info("[{}] ✅ Response generated successfully (elapsed: {})",
+                    traceId, TraceContext.getElapsedTimeFormatted());
+            logger.info("[{}]    🔧 Tools actually used: {} - {}",
+                    traceId, actuallyUsedTools.length, java.util.Arrays.toString(actuallyUsedTools));
+
+            return new ChatResponse(response, provider, actuallyUsedTools);
 
         } catch (IllegalArgumentException e) {
             logger.error("[{}] ❌ Invalid provider: {}", traceId, provider);
@@ -109,10 +122,11 @@ public class ChatService {
             // STEP 4: Clean up contexts
             GlobalBrainContext.clear();
             TraceContext.clear();
+            AgentPlanHolder.clear();  // ← Clean up plan holder
             logger.info("[{}] 🧹 Contexts cleared", traceId);
         }
     }
-    
+
     /**
      * Get ChatClient bean for a provider
      * Returns the Hybrid Brain ChatClient (4 Core Brains + Dynamic Specialist Brains)

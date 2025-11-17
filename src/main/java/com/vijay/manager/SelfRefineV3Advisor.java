@@ -1,6 +1,10 @@
 package com.vijay.manager;
 
+import com.vijay.context.GlobalBrainContext;
+import com.vijay.context.TraceContext;
+import com.vijay.dto.AgentPlan;
 import com.vijay.service.*;
+import com.vijay.util.AgentPlanHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -46,10 +50,10 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
     private final OutputMerger outputMerger;
     
     // Configuration
-    private static final double MIN_ACCEPTABLE_RATING = 3.5;
+    private static final double MIN_ACCEPTABLE_RATING = 3.8;  // Raised from 3.5 - most responses should be "Good" or better
     private static final double HALLUCINATION_PENALTY = 0.3;
     private static final double CONSISTENCY_PENALTY = 0.2;
-    private static final int MAX_REFINEMENT_ATTEMPTS = 3;
+    private static final int MAX_REFINEMENT_ATTEMPTS = 2;  // Reduced from 3 - good responses don't need refinement
     
     public SelfRefineV3Advisor(
             OpenAiChatModel chatModel,
@@ -89,7 +93,8 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
     
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
-        logger.info("🧾 Brain 13 (Self-Refine V3): Enhanced quality evaluation...");
+        String traceId = TraceContext.getTraceId();
+        logger.info("[{}] 🧾 Brain 13 (Self-Refine V3): Enhanced quality evaluation...", traceId);
         
         try {
             String userId = extractUserId(request);
@@ -99,17 +104,29 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
             // Initialize supervisor for this conversation
             supervisorBrain.initializeConversation(userId, conversationId);
             
+            // ✅ OPTIMIZATION: Skip quality checks for simple queries (complexity ≤ 3)
+            AgentPlan plan = AgentPlanHolder.getPlan();
+            if (plan != null && plan.getComplexity() <= 3) {
+                logger.info("[{}] 🚀 Brain 13: Skipping quality evaluation for simple query (complexity: {})", 
+                    traceId, plan.getComplexity());
+                logger.info("[{}]    📊 Query intent: {}, Strategy: {}", 
+                    traceId, plan.getIntent(), plan.getStrategy());
+                
+                // Just pass through without quality checks
+                return chain.nextCall(request);
+            }
+            
             // Get initial response
             ChatClientResponse response = chain.nextCall(request);
             
             if (response == null || response.chatResponse() == null) {
-                logger.warn("⚠️ Brain 13: No response to evaluate");
+                logger.warn("[{}] ⚠️ Brain 13: No response to evaluate", traceId);
                 return response;
             }
             
             String content = response.chatResponse().getResult().getOutput().getText();
             if (content == null || content.trim().isEmpty()) {
-                logger.warn("⚠️ Brain 13: Empty response content");
+                logger.warn("[{}] ⚠️ Brain 13: Empty response content", traceId);
                 return response;
             }
             
@@ -279,16 +296,67 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
     }
     
     /**
-     * Evaluate relevance to query
+     * Evaluate relevance to query - REALISTIC SCORING
+     * 
+     * Context-aware relevance that understands intent, not just word matching
      */
     private double evaluateRelevance(String content, String userQuery) {
         if (content == null || userQuery == null) {
             return 2.0;
         }
         
-        String[] queryWords = userQuery.toLowerCase().split("\\s+");
+        String queryLower = userQuery.toLowerCase();
         String contentLower = content.toLowerCase();
         
+        // ===== DATE/TIME QUERIES =====
+        if (queryLower.contains("date") || queryLower.contains("today") || queryLower.contains("tody")) {
+            // Check if response contains date indicators
+            if (contentLower.contains("202") ||  // Year like 2025
+                contentLower.contains("january") || contentLower.contains("february") ||
+                contentLower.contains("march") || contentLower.contains("april") ||
+                contentLower.contains("may") || contentLower.contains("june") ||
+                contentLower.contains("july") || contentLower.contains("august") ||
+                contentLower.contains("september") || contentLower.contains("october") ||
+                contentLower.contains("november") || contentLower.contains("december") ||
+                contentLower.matches(".*\\d{1,2}[/-]\\d{1,2}[/-]\\d{2,4}.*")) {  // Date format
+                return 4.8; // HIGHLY relevant! ✅
+            }
+            return 3.0; // Moderately relevant
+        }
+        
+        // ===== PROJECT/ANALYSIS QUERIES =====
+        if (queryLower.contains("analyze") || queryLower.contains("project") || 
+            queryLower.contains("code") || queryLower.contains("structure")) {
+            if (contentLower.contains("project") || contentLower.contains("analysis") ||
+                contentLower.contains("code") || contentLower.contains("structure") ||
+                contentLower.contains("class") || contentLower.contains("method")) {
+                return 4.5; // Highly relevant! ✅
+            }
+            return 3.0;
+        }
+        
+        // ===== WEATHER QUERIES =====
+        if (queryLower.contains("weather") || queryLower.contains("temperature") || 
+            queryLower.contains("forecast")) {
+            if (contentLower.contains("weather") || contentLower.contains("temperature") ||
+                contentLower.contains("celsius") || contentLower.contains("fahrenheit") ||
+                contentLower.contains("rain") || contentLower.contains("sunny")) {
+                return 4.5; // Highly relevant! ✅
+            }
+            return 3.0;
+        }
+        
+        // ===== CALCULATION QUERIES =====
+        if (queryLower.matches(".*\\d+.*[+\\-*/].*\\d+.*")) {  // Math expression
+            // Check if response contains numbers or results
+            if (contentLower.matches(".*\\d+.*")) {
+                return 4.5; // Highly relevant! ✅
+            }
+            return 3.0;
+        }
+        
+        // ===== DEFAULT: WORD MATCHING =====
+        String[] queryWords = queryLower.split("\\s+");
         int matchCount = 0;
         for (String word : queryWords) {
             if (word.length() > 3 && contentLower.contains(word)) {
@@ -296,40 +364,84 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
             }
         }
         
-        double relevanceScore = (double) matchCount / queryWords.length;
+        double wordMatchRatio = (double) matchCount / Math.max(1, queryWords.length);
         
-        // Convert to 1-5 scale
-        return 1.0 + (relevanceScore * 4.0);
+        // More realistic scoring
+        if (wordMatchRatio >= 0.8) {
+            return 4.5; // Excellent match
+        } else if (wordMatchRatio >= 0.6) {
+            return 4.0; // Good match
+        } else if (wordMatchRatio >= 0.4) {
+            return 3.5; // Moderate match
+        } else if (wordMatchRatio >= 0.2) {
+            return 3.0; // Some relevance
+        } else {
+            return 2.5; // Weak relevance
+        }
     }
     
     /**
-     * Evaluate helpfulness of response
+     * Evaluate helpfulness of response - REALISTIC SCORING
+     * 
+     * Direct answers are helpful! Not everything needs examples/code/explanations
      */
     private double evaluateHelpfulness(String content) {
         if (content == null || content.isEmpty()) {
             return 1.0;
         }
         
-        double score = 3.0; // Base score
+        int contentLength = content.length();
+        
+        // ===== DIRECT ANSWERS ARE HELPFUL =====
+        // "November 17, 2025" is VERY helpful for "What is today's date?"
+        if (contentLength < 50) {
+            // Short, direct answers are HIGHLY helpful
+            return 4.5; // ✅ Concise and to the point
+        }
+        
+        // ===== MEDIUM ANSWERS =====
+        if (contentLength < 200) {
+            double score = 4.0; // Good base score
+            
+            // Bonus for examples
+            if (content.contains("example") || content.contains("for instance")) {
+                score += 0.3;
+            }
+            
+            // Bonus for code
+            if (content.contains("```") || content.contains("public") || content.contains("def")) {
+                score += 0.3;
+            }
+            
+            return Math.min(5.0, score);
+        }
+        
+        // ===== LONG ANSWERS =====
+        double score = 3.5; // Base score for longer content
         
         // Check for examples
         if (content.contains("example") || content.contains("for instance")) {
-            score += 0.5;
+            score += 0.4;
         }
         
         // Check for code
         if (content.contains("```") || content.contains("public") || content.contains("def")) {
-            score += 0.5;
+            score += 0.4;
         }
         
         // Check for actionable advice
         if (content.contains("you can") || content.contains("you should") || content.contains("try")) {
-            score += 0.5;
+            score += 0.3;
         }
         
         // Check for explanations
         if (content.contains("because") || content.contains("reason") || content.contains("why")) {
-            score += 0.5;
+            score += 0.3;
+        }
+        
+        // Check for structure (lists, sections)
+        if (content.contains("\n-") || content.contains("\n1.") || content.contains("##")) {
+            score += 0.2;
         }
         
         return Math.min(5.0, score);

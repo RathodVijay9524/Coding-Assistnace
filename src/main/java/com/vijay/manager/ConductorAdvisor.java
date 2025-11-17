@@ -97,8 +97,14 @@ public class ConductorAdvisor implements CallAdvisor, IAgentBrain {
             // STEP 2: Select strategy
             String strategy = selectReasoningStrategy(complexity, ambiguity);
             
-            // STEP 3: Identify tools (IMPROVED)
-            List<String> requiredTools = identifyRequiredTools(userQuery, intent);
+            // STEP 3: Get suggested tools from ReasoningState (from ToolFinder)
+            ReasoningState state = GlobalBrainContext.getReasoningState();
+            List<String> suggestedTools = (state != null && state.getSuggestedTools() != null) 
+                ? state.getSuggestedTools() 
+                : new ArrayList<>();
+            
+            // STEP 4: Identify tools (IMPROVED) - pass suggested tools for context
+            List<String> requiredTools = identifyRequiredTools(userQuery, intent, suggestedTools);
             
             // STEP 4: Identify specialist brains
             List<String> selectedBrains = identifySpecialistBrains(userQuery, intent, complexity);
@@ -121,7 +127,6 @@ public class ConductorAdvisor implements CallAdvisor, IAgentBrain {
             logger.info(formatPlanDetails(masterPlan));
             
             // PHASE 1 INTEGRATION: Approve tools in ReasoningState
-            ReasoningState state = GlobalBrainContext.getReasoningState();
             if (state != null) {
                 state.approveTools(requiredTools);  // FINAL DECISION
                 logger.info("[{}]    ✅ Conductor APPROVED tools: {}", traceId, requiredTools);
@@ -254,31 +259,66 @@ public class ConductorAdvisor implements CallAdvisor, IAgentBrain {
     
     /**
      * Identify required tools - IMPROVED with better pattern matching
+     * Now recognizes: analysis, project, code, weather, date/time, email, search, calendar
+     * 
+     * Strategy: For analysis queries, TRUST ToolFinder's suggestions
+     * For other queries, use hardcoded patterns
      */
-    private List<String> identifyRequiredTools(String query, String intent) {
+    private List<String> identifyRequiredTools(String query, String intent, List<String> suggestedTools) {
         List<String> tools = new ArrayList<>();
+        String lowerQuery = query.toLowerCase();
+        
+        // ✅ ANALYSIS/PROJECT/CODE tools - TRUST ToolFinder!
+        if (lowerQuery.contains("analyze") || lowerQuery.contains("analyse") ||
+            lowerQuery.contains("check") || lowerQuery.contains("review") ||
+            lowerQuery.contains("inspect") || lowerQuery.contains("audit") ||
+            lowerQuery.contains("project") || lowerQuery.contains("code") ||
+            lowerQuery.contains("repository") || lowerQuery.contains("codebase") ||
+            lowerQuery.contains("bug") || lowerQuery.contains("error") ||
+            lowerQuery.contains(".java") || lowerQuery.contains("spring")) {
+            
+            // ✅ For analysis queries, USE ALL suggested tools from ToolFinder
+            // ToolFinder already did semantic matching, so trust its results
+            tools.addAll(suggestedTools);
+            logger.info("   ✅ Analysis query detected - approving ALL {} suggested tools from ToolFinder", suggestedTools.size());
+            return tools;
+        }
         
         // CALCULATION tools - improved pattern matching
-        if (intent.equals("CALCULATION") || query.matches(".*\\b(add|calculate|sum|total|plus|\\+|how much|what is)\\b.*")) {
-            if (query.matches(".*\\b(add|calculate|sum|total|plus|\\+|how much)\\b.*")) tools.add("add");
-            if (query.matches(".*\\b(subtract|minus|\\-)\\b.*")) tools.add("subtract");
-            if (query.matches(".*\\b(multiply|times|\\*)\\b.*")) tools.add("multiply");
-            if (query.matches(".*\\b(divide|divided|/)\\b.*")) tools.add("divide");
+        if (intent.equals("CALCULATION") || lowerQuery.matches(".*\\b(add|calculate|sum|total|plus|\\+|how much|what is)\\b.*")) {
+            if (lowerQuery.matches(".*\\b(add|calculate|sum|total|plus|\\+|how much)\\b.*")) tools.add("add");
+            if (lowerQuery.matches(".*\\b(subtract|minus|\\-)\\b.*")) tools.add("subtract");
+            if (lowerQuery.matches(".*\\b(multiply|times|\\*)\\b.*")) tools.add("multiply");
+            if (lowerQuery.matches(".*\\b(divide|divided|/)\\b.*")) tools.add("divide");
         }
         
         // DATE/TIME tools
-        if (query.matches(".*\\b(date|today|time|current|now|when|what time|what's the date)\\b.*")) {
+        if (lowerQuery.matches(".*\\b(date|today|time|current|now|when|what time|what's the date|tody)\\b.*")) {
             tools.add("getCurrentDateTime");
         }
         
         // WEATHER tools
-        if (query.matches(".*\\b(weather|temperature|rain|sunny|forecast|what's the weather)\\b.*")) {
+        if (lowerQuery.matches(".*\\b(weather|temperature|rain|sunny|forecast|what's the weather|celsius|fahrenheit)\\b.*")) {
             tools.add("getWeather");
         }
         
         // EMAIL tools
-        if (query.matches(".*\\b(email|send|mail|message|write an email)\\b.*")) {
+        if (lowerQuery.matches(".*\\b(email|send|mail|message|write an email)\\b.*")) {
             tools.add("sendEmail");
+        }
+        
+        // SEARCH tools
+        if (lowerQuery.contains("search") || lowerQuery.contains("find") ||
+            lowerQuery.contains("look up") || lowerQuery.contains("latest") ||
+            lowerQuery.contains("version of")) {
+            tools.add("search");
+        }
+        
+        // CALENDAR/EVENT tools
+        if (lowerQuery.contains("event") || lowerQuery.contains("meeting") ||
+            lowerQuery.contains("schedule") || lowerQuery.contains("calendar") ||
+            lowerQuery.contains("appointment")) {
+            tools.add("calendar");
         }
         
         logger.info("   🔍 Tool identification: Intent={}, Query length={}, Tools found={}", 

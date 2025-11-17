@@ -1,5 +1,6 @@
 package com.vijay.config;
 
+import com.vijay.manager.AiToolProvider;
 import com.vijay.manager.ConductorAdvisor;
 import com.vijay.manager.DynamicContextAdvisor;
 import com.vijay.manager.ToolCallAdvisor;
@@ -200,7 +201,7 @@ public class AIProviderConfig {
                                 ToolCallAdvisor toolCall,
                                 SelfRefineV3Advisor judge,
                                 PersonalityAdvisor personality,
-                                AIAgentToolService aiAgentToolService) {
+                                java.util.List<AiToolProvider> allToolProviders) {
         logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v7.0 (Supervisor Brain + Self-Refine V3)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
@@ -210,7 +211,7 @@ public class AIProviderConfig {
                         judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
                         personality
                 )
-                .defaultTools(aiAgentToolService)  // Tools available for Brain 1
+                .defaultTools((Object[]) allToolProviders.toArray(new AiToolProvider[0]))  // All tools from all providers
                 .build();
     }
 
@@ -221,7 +222,7 @@ public class AIProviderConfig {
                                    ToolCallAdvisor toolCall,
                                    SelfRefineV3Advisor judge,
                                    PersonalityAdvisor personality,
-                                   AIAgentToolService aiAgentToolService) {
+                                   java.util.List<AiToolProvider> allToolProviders) {
         logger.info("Creating Anthropic Chat Client with MCP tools");
         return ChatClient.builder(anthropicChatModel)
                 .defaultAdvisors(
@@ -231,7 +232,7 @@ public class AIProviderConfig {
                         judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
                         personality
                 )
-                .defaultTools(aiAgentToolService)
+                .defaultTools((Object[]) allToolProviders.toArray(new AiToolProvider[0]))  // All tools from all providers
                 .build();
     }
 
@@ -242,7 +243,7 @@ public class AIProviderConfig {
                                ToolCallAdvisor toolCall,
                                SelfRefineV3Advisor judge,
                                PersonalityAdvisor personality,
-                               AIAgentToolService aiAgentToolService) {
+                               java.util.List<AiToolProvider> allToolProviders) {
         logger.info("Creating google Chat Client with MCP tools");
         return ChatClient.builder(googleGenAiChatModel)
                 .defaultAdvisors(
@@ -252,7 +253,7 @@ public class AIProviderConfig {
                         judge,              // Brain 13: Self-Refine (order: 1000) - Evaluates quality
                         personality
                 )
-                .defaultTools(aiAgentToolService)
+                .defaultTools((Object[]) allToolProviders.toArray(new AiToolProvider[0]))  // All tools from all providers
                 .build();
     }
 
@@ -260,13 +261,13 @@ public class AIProviderConfig {
     @Bean(name = "haggingFaceChatClient")
     ChatClient huggingfaceChatClient(HuggingfaceChatModel huggingfaceChatModel,
                                      ChatMemory chatMemory,
-                                     AIAgentToolService aiAgentToolService) {
+                                     java.util.List<AiToolProvider> allToolProviders) {
         logger.info("Creating HaggingFace Chat Client with MCP tools");
         return ChatClient.builder(huggingfaceChatModel)
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build()  // Memory
                 )
-                .defaultTools(aiAgentToolService)
+                .defaultTools((Object[]) allToolProviders.toArray(new AiToolProvider[0]))  // All tools from all providers
                 .build();
     }
 
@@ -321,7 +322,7 @@ public class AIProviderConfig {
         
         return ChatClient.builder(chatModel)
                 .defaultAdvisors(advisorArray)
-                .defaultTools(aiAgentToolService)
+                .defaultTools(aiAgentToolService)  // All tools available
                 .build();
     }
 
