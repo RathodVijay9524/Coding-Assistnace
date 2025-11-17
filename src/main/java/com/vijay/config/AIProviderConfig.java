@@ -84,6 +84,7 @@ public class AIProviderConfig {
     @Bean(name = "ollamaChatClient")
     @Primary
     ChatClient ollamaChatClient(OllamaChatModel ollamaChatModel,
+                                ChatMemory chatMemory,
                                ConductorAdvisor conductor,
                                DynamicContextAdvisor dynamicContext,
                                ToolCallAdvisor toolCall,
@@ -106,6 +107,7 @@ public class AIProviderConfig {
         
         return ChatClient.builder(ollamaChatModel)
                 .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
                     conductor,          // Brain 0: Unified Conductor (order: 0) - Creates ONE master plan
                     dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Reads plan, fetches specialist context
                     toolCall,           // Brain 2: Tool Call (order: 2) - Reads plan, executes tools if needed
@@ -119,6 +121,7 @@ public class AIProviderConfig {
     // OpenAI client (backup for complex reasoning when needed)
     @Bean(name = "openAiChatClient")
     ChatClient openAiChatClient(OpenAiChatModel openAiChatModel,
+                                ChatMemory chatMemory,
                                 ConductorAdvisor conductor,
                                 DynamicContextAdvisor dynamicContext,
                                 ToolCallAdvisor toolCall,
@@ -128,6 +131,7 @@ public class AIProviderConfig {
         logger.info("🧠 Creating OpenAI Chat Client - Multi-Brain Architecture v7.0 (Supervisor Brain + Self-Refine V3)");
         return ChatClient.builder(openAiChatModel)
                 .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         conductor,          // Brain 0: Unified Conductor (order: 0) - Creates ONE master plan
                         dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Reads plan, fetches specialist context
                         toolCall,           // Brain 2: Tool Call (order: 2) - Reads plan, executes tools if needed
@@ -140,6 +144,7 @@ public class AIProviderConfig {
 
     @Bean(name = "anthropicChatClient")
     ChatClient anthropicChatClient(AnthropicChatModel anthropicChatModel,
+                                   ChatMemory chatMemory,
                                    ConductorAdvisor conductor,
                                    DynamicContextAdvisor dynamicContext,
                                    ToolCallAdvisor toolCall,
@@ -149,6 +154,7 @@ public class AIProviderConfig {
         logger.info("Creating Anthropic Chat Client with MCP tools");
         return ChatClient.builder(anthropicChatModel)
                 .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         conductor,          // Brain 0: Unified Conductor (order: 0) - Creates ONE master plan
                         dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Reads plan, fetches specialist context
                         toolCall,           // Brain 2: Tool Call (order: 2) - Reads plan, executes tools if needed
@@ -161,6 +167,7 @@ public class AIProviderConfig {
 
     @Bean(name = "googleChatClient")
     ChatClient geminChatClient(GoogleGenAiChatModel googleGenAiChatModel,
+                               ChatMemory chatMemory,
                                ConductorAdvisor conductor,
                                DynamicContextAdvisor dynamicContext,
                                ToolCallAdvisor toolCall,
@@ -170,6 +177,7 @@ public class AIProviderConfig {
         logger.info("Creating google Chat Client with MCP tools");
         return ChatClient.builder(googleGenAiChatModel)
                 .defaultAdvisors(
+                        MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         conductor,          // Brain 0: Unified Conductor (order: 0) - Creates ONE master plan
                         dynamicContext,     // Brain 1: Dynamic Context (order: 1) - Reads plan, fetches specialist context
                         toolCall,           // Brain 2: Tool Call (order: 2) - Reads plan, executes tools if needed
