@@ -207,12 +207,15 @@ public class ConversationMemoryAdvisor implements CallAdvisor, IAgentBrain {
     }
     
     private ChatClientRequest injectMemoryContext(ChatClientRequest request, String memoryContext) {
-        // Augment the user message with memory context
-        String augmentedMessage = memoryContext + "\n\n" + extractUserQuery(request);
+        // ❌ DISABLED: This concatenates history into query string, contaminating current queries
+        // ✅ Use MessageChatMemoryAdvisor instead (handles message history properly)
+        // String augmentedMessage = memoryContext + "\n\n" + extractUserQuery(request);
+        // return request.mutate()
+        //     .prompt(request.prompt().augmentUserMessage(augmentedMessage))
+        //     .build();
         
-        return request.mutate()
-            .prompt(request.prompt().augmentUserMessage(augmentedMessage))
-            .build();
+        // ✅ NEW: Return request unchanged - MessageChatMemoryAdvisor will handle history
+        return request;
     }
     
     private String extractSearchStrategy(ChatClientResponse response) {

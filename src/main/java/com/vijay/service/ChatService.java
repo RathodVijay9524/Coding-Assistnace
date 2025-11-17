@@ -46,12 +46,15 @@ public class ChatService {
 
     private final ApplicationContext applicationContext;
     private final ToolFinderService toolFinder;
+    private final SupervisorBrain supervisorBrain;
 
     public ChatService(ApplicationContext applicationContext,
                        List<AiToolProvider> allToolProviders,
-                       ToolFinderService toolFinder) {
+                       ToolFinderService toolFinder,
+                       SupervisorBrain supervisorBrain) {
         this.applicationContext = applicationContext;
         this.toolFinder = toolFinder;
+        this.supervisorBrain = supervisorBrain;
     }
 
     public ChatResponse processChat(String provider, ChatRequest request) {
@@ -64,12 +67,26 @@ public class ChatService {
                 request.getMessage().substring(0, 60) + "..." : request.getMessage());
 
         try {
+            // 💾 Get stable conversation ID from request
+            String conversationId = request.getConversationId();
+            if (conversationId == null || conversationId.isEmpty()) {
+                conversationId = "session_default_" + System.currentTimeMillis() / 60000;
+            }
+            final String finalConversationId = conversationId;  // ← Make it final for lambda
+            logger.info("[{}]    💾 Using conversation ID: {}", traceId, finalConversationId);
+
+            // 💾 Initialize SupervisorBrain with STABLE conversation ID (not random!)
+            String userId = "default_user";
+            supervisorBrain.initializeConversation(userId, finalConversationId);
+            logger.info("[{}]    ✅ SupervisorBrain initialized with conversation ID: {}", traceId, finalConversationId);
+
             // STEP 0.5: Initialize GlobalBrainContext for this request
             ReasoningState reasoningState = new ReasoningState();
             reasoningState.setUserQuery(request.getMessage());
             GlobalBrainContext.setReasoningState(reasoningState);
             GlobalBrainContext.put("traceId", traceId);
             GlobalBrainContext.put("provider", provider);
+            GlobalBrainContext.put("conversationId", finalConversationId);
             logger.info("[{}]    🧠 GlobalBrainContext initialized", traceId);
 
             // STEP 1: Get ChatClient for provider
@@ -90,14 +107,36 @@ public class ChatService {
 
             logger.info("[{}]    🧠 Delegating to Hybrid Brain Chain (Conductor will filter tools)...", traceId);
 
+            // 💾 STEP 3A: Add system prompt to tell AI to use conversation history
+            String systemPrompt = """
+                    You are a helpful AI assistant. 
+                    
+                    IMPORTANT: You have access to conversation history from previous messages in this session.
+                    Use the conversation history to:
+                    1. Remember user information (like their name if they told you)
+                    2. Provide consistent responses
+                    3. Reference previous context
+                    
+                    If the user asks about something they told you before, use that information from the history.
+                    """;
+            logger.info("[{}]    📝 System prompt injected to use conversation history", traceId);
+            logger.info("[{}]    📚 MessageChatMemoryAdvisor will load history for conversation: {}", traceId, finalConversationId);
+
             // STEP 3: Call ChatClient with ALL suggested tools
             // The Conductor (Brain 0) will approve/reject them
             // The ToolCallAdvisor (Brain 2) will ENFORCE only approved tools are executed
+            // 💾 IMPORTANT: Pass conversation ID to MessageChatMemoryAdvisor
+            logger.info("[{}]    🚀 Calling ChatClient with message: {}", traceId, request.getMessage());
             String response = chatClient.prompt()
+                    .system(systemPrompt)  // ← Tell AI to use conversation history
                     .user(request.getMessage())
                     .toolNames(suggestedToolsArray)  // ← Pass ALL suggested tools to LLM
+                    .advisors(advisor -> advisor
+                            .param("conversationId", finalConversationId)  // ← KEY: Stable conversation ID for memory advisor
+                    )
                     .call()
                     .content();
+            logger.info("[{}]    ✅ ChatClient returned response (length: {})", traceId, response.length());
 
             // ✅ STEP 4: Get the actually USED tools from the plan
             AgentPlan plan = AgentPlanHolder.getPlan();

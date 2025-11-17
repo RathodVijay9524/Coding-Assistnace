@@ -10,6 +10,9 @@ public class ChatRequest {
     @JsonProperty("useTools")
     private boolean useTools = true;
     
+    @JsonProperty("conversationId")
+    private String conversationId;
+    
     public ChatRequest() {}
     
     public ChatRequest(String message, boolean useTools) {
@@ -33,11 +36,20 @@ public class ChatRequest {
         this.useTools = useTools;
     }
     
+    public String getConversationId() {
+        return conversationId;
+    }
+    
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
+    }
+    
     @Override
     public String toString() {
         return "ChatRequest{" +
                 "message='" + message + '\'' +
                 ", useTools=" + useTools +
+                ", conversationId='" + conversationId + '\'' +
                 '}';
     }
 }

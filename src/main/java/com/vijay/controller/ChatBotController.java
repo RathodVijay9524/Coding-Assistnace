@@ -12,6 +12,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.HttpSession;
 import java.util.UUID;
 
 @Controller
@@ -41,14 +42,26 @@ public class ChatBotController {
     @ResponseBody
     public ResponseEntity<ChatResponse> sendMessage(@RequestParam String message,
                                                    @RequestParam String provider,
-                                                   @RequestParam(defaultValue = "true") boolean useTools) {
+                                                   @RequestParam(defaultValue = "true") boolean useTools,
+                                                   HttpSession session) {
         // Initialize TraceContext for request tracing
         String traceId = UUID.randomUUID().toString();
         TraceContext.initialize(traceId);
-        logger.info("🔍 TraceContext initialized: {} | Message: {} | Provider: {}", traceId, message, provider);
+        
+        // 💾 Get or create stable conversation ID for this session
+        String conversationId = (String) session.getAttribute("conversationId");
+        if (conversationId == null) {
+            conversationId = "session_" + session.getId();
+            session.setAttribute("conversationId", conversationId);
+            logger.info("🔍 Created new conversation ID: {}", conversationId);
+        }
+        
+        logger.info("🔍 TraceContext initialized: {} | Conversation: {} | Message: {} | Provider: {}", 
+                traceId, conversationId, message, provider);
         
         try {
             ChatRequest request = new ChatRequest(message, useTools);
+            request.setConversationId(conversationId);  // Pass conversation ID to service
             ChatResponse response = chatService.processChat(provider, request);
             logger.info("✅ Request completed successfully (traceId: {})", traceId);
             return ResponseEntity.ok(response);

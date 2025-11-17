@@ -99,9 +99,18 @@ public class SelfRefineV3Advisor implements CallAdvisor, IAgentBrain {
         try {
             String userId = extractUserId(request);
             String userQuery = extractUserMessage(request);
-            String conversationId = generateConversationId();
             
-            // Initialize supervisor for this conversation
+            // 💾 Get conversation ID from GlobalBrainContext (set by ChatService)
+            String conversationId = (String) GlobalBrainContext.get("conversationId");
+            if (conversationId == null || conversationId.isEmpty()) {
+                // Only generate new ID if none exists
+                conversationId = generateConversationId();
+                logger.warn("[{}] ⚠️ No conversation ID in context, generated: {}", traceId, conversationId);
+            } else {
+                logger.info("[{}] ✅ Using existing conversation ID: {}", traceId, conversationId);
+            }
+            
+            // Initialize supervisor for this conversation (reuse existing ID)
             supervisorBrain.initializeConversation(userId, conversationId);
             
             // ✅ OPTIMIZATION: Skip quality checks for simple queries (complexity ≤ 3)

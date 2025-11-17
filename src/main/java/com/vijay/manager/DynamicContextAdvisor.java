@@ -11,6 +11,7 @@ import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisor;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisorChain;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.stereotype.Component;
 
@@ -222,23 +223,38 @@ public class DynamicContextAdvisor implements CallAdvisor, IAgentBrain {
     }
 
     /**
-     * Extract user message from ChatClientRequest
+     * ✅ FIXED: Extract ONLY the current user message from ChatClientRequest
+     * Previous conversation history is handled by MessageChatMemoryAdvisor
+     * This method should only return the LATEST query
      */
     private String extractUserMessage(ChatClientRequest request) {
         try {
             if (request.prompt() != null && request.prompt().getInstructions() != null) {
-                StringBuilder messageText = new StringBuilder();
-                for (var message : request.prompt().getInstructions()) {
+                List<Message> messages = request.prompt().getInstructions();
+                
+                // ✅ Iterate BACKWARDS to find the LAST UserMessage (current query)
+                for (int i = messages.size() - 1; i >= 0; i--) {
+                    Message message = messages.get(i);
                     if (message instanceof UserMessage) {
                         UserMessage userMsg = (UserMessage) message;
-                        messageText.append(userMsg.getText()).append(" ");
+                        String currentMessage = userMsg.getText().trim();
+                        
+                        // Optional: Log message count for debugging
+                        if (messages.size() > 1) {
+                            logger.debug("   📚 Total messages in conversation: {}", messages.size());
+                            logger.debug("   📝 Current message extracted: {}", 
+                                currentMessage.length() > 60 
+                                    ? currentMessage.substring(0, 60) + "..." 
+                                    : currentMessage);
+                        }
+                        
+                        return currentMessage;
                     }
                 }
-                return messageText.toString().trim();
             }
             return "";
         } catch (Exception e) {
-            logger.debug("Failed to extract user message: {}", e.getMessage());
+            logger.debug("⚠️ Failed to extract user message: {}", e.getMessage());
             return "";
         }
     }
