@@ -5,8 +5,6 @@ import com.vijay.manager.AiToolProvider;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Service;
@@ -31,7 +29,6 @@ import java.util.Map;
 public class SpringConfigToolService implements AiToolProvider {
     
     private static final Logger logger = LoggerFactory.getLogger(SpringConfigToolService.class);
-    private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectMapper objectMapper;
     
     /**
@@ -105,10 +102,8 @@ public class SpringConfigToolService implements AiToolProvider {
                 Format as YAML.
                 """, appName != null ? appName : "MyApplication");
             
-            return chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template application config
+            return "spring:\n  application:\n    name: " + appName + "\n  profiles:\n    active: dev\n  jpa:\n    hibernate:\n      ddl-auto: update\n  datasource:\n    url: jdbc:mysql://localhost:3306/db\n";
                 
         } catch (Exception e) {
             logger.debug("Could not generate application config: {}", e.getMessage());
@@ -134,10 +129,8 @@ public class SpringConfigToolService implements AiToolProvider {
                 Return ONLY the Java code.
                 """;
             
-            return chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template security config
+            return "@Configuration\n@EnableWebSecurity\npublic class SecurityConfig {\n    @Bean\n    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {\n        http.csrf().disable().authorizeRequests().anyRequest().authenticated();\n        return http.build();\n    }\n}\n";
                 
         } catch (Exception e) {
             logger.debug("Could not generate security config: {}", e.getMessage());
@@ -162,10 +155,8 @@ public class SpringConfigToolService implements AiToolProvider {
                 Format as YAML configuration.
                 """;
             
-            return chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template database config
+            return "spring:\n  datasource:\n    url: jdbc:mysql://localhost:3306/mydb\n    username: root\n    password: password\n  jpa:\n    hibernate:\n      ddl-auto: update\n    show-sql: true\n";
                 
         } catch (Exception e) {
             logger.debug("Could not generate database config: {}", e.getMessage());
@@ -189,10 +180,8 @@ public class SpringConfigToolService implements AiToolProvider {
                 Format as YAML configuration.
                 """;
             
-            return chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template caching config
+            return "spring:\n  cache:\n    type: simple\n    cache-names: users,products\n  redis:\n    host: localhost\n    port: 6379\n";
                 
         } catch (Exception e) {
             logger.debug("Could not generate caching config: {}", e.getMessage());
@@ -217,10 +206,8 @@ public class SpringConfigToolService implements AiToolProvider {
                 Format as YAML configuration.
                 """;
             
-            return chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template server config
+            return "server:\n  port: 8080\n  servlet:\n    context-path: /api\n  compression:\n    enabled: true\n  ssl:\n    enabled: false\n";
                 
         } catch (Exception e) {
             logger.debug("Could not generate server config: {}", e.getMessage());

@@ -5,10 +5,8 @@ import com.vijay.manager.AiToolProvider;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -32,7 +30,6 @@ import java.util.Map;
 public class EnvironmentConfigToolService implements AiToolProvider {
     
     private static final Logger logger = LoggerFactory.getLogger(EnvironmentConfigToolService.class);
-    private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectMapper objectMapper;
     
     /**
@@ -73,10 +70,8 @@ public class EnvironmentConfigToolService implements AiToolProvider {
                 Include security best practices.
                 """, environment, framework, format, format);
             
-            String config = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template environment config
+            String config = "APP_ENV=" + environment + "\nDATABASE_URL=localhost:5432\nAPI_KEY=your-key\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("config", config);
@@ -128,10 +123,8 @@ public class EnvironmentConfigToolService implements AiToolProvider {
                 Provide production-ready configuration with security best practices.
                 """, manager, environment, secretTypes);
             
-            String secretsConfig = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template secrets config
+            String secretsConfig = "secrets:\n  database:\n    username: admin\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("secretsConfig", secretsConfig);
@@ -182,10 +175,8 @@ public class EnvironmentConfigToolService implements AiToolProvider {
                 Provide modular, reusable configuration with documentation.
                 """, tool, provider, components);
             
-            String infraConfig = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template infrastructure config
+            String infraConfig = "resource aws_instance app {}\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("infraConfig", infraConfig);
@@ -240,10 +231,8 @@ public class EnvironmentConfigToolService implements AiToolProvider {
                 Include best practices for production.
                 """, appName, deploymentType, scope);
             
-            String k8sConfig = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template Kubernetes config
+            String k8sConfig = "apiVersion: apps/v1\nkind: Deployment\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("k8sConfig", k8sConfig);

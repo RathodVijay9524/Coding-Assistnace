@@ -5,10 +5,8 @@ import com.vijay.manager.AiToolProvider;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -33,7 +31,6 @@ import java.util.Map;
 public class CICDPipelineToolService implements AiToolProvider {
     
     private static final Logger logger = LoggerFactory.getLogger(CICDPipelineToolService.class);
-    private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectMapper objectMapper;
     
     /**
@@ -48,34 +45,8 @@ public class CICDPipelineToolService implements AiToolProvider {
         logger.info("🚀 Generating CI/CD pipeline for: {}", platform);
         
         try {
-            String prompt = String.format("""
-                Generate a complete CI/CD pipeline configuration for %s using %s:
-                
-                Build Tool: %s
-                Deployment Target: %s
-                
-                Include:
-                - Trigger conditions (push, PR, tags)
-                - Build stage with caching
-                - Unit test execution
-                - Integration test execution
-                - Code quality analysis (SonarQube)
-                - Security scanning
-                - Docker image build and push
-                - Deployment to %s
-                - Notifications (Slack, email)
-                - Rollback strategy
-                - Performance monitoring
-                
-                Format as proper %s configuration with detailed comments.
-                """, platform, buildTool, buildTool, deploymentTarget, deploymentTarget, 
-                    platform.equals("github") ? "YAML (.github/workflows)" : 
-                    platform.equals("gitlab") ? "YAML (.gitlab-ci.yml)" : "Groovy (Jenkinsfile)");
-            
-            String config = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template pipeline config
+            String config = "name: CI/CD\non: [push]\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - run: " + buildTool + " clean package\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("pipeline", config);
@@ -104,30 +75,8 @@ public class CICDPipelineToolService implements AiToolProvider {
         logger.info("🚀 Generating build stage for: {}", buildTool);
         
         try {
-            String prompt = String.format("""
-                Generate an optimized build stage configuration for %s (%s):
-                
-                Optimization Focus: %s
-                
-                Include:
-                - Dependency caching strategy
-                - Parallel build configuration
-                - Build optimization flags
-                - Artifact generation
-                - Build artifact caching
-                - Error handling
-                - Build timeout configuration
-                - Resource limits
-                - Build logging
-                - Failure notifications
-                
-                Provide configuration for common CI/CD platforms.
-                """, buildTool, language, focus);
-            
-            String buildStage = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template build stage
+            String buildStage = "build:\n  stage: build\n  script:\n    - " + buildTool + " clean package\n  cache:\n    paths:\n      - .m2/repository\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("buildStage", buildStage);
@@ -155,34 +104,8 @@ public class CICDPipelineToolService implements AiToolProvider {
         logger.info("🚀 Generating test stage");
         
         try {
-            String prompt = String.format("""
-                Generate a comprehensive test stage configuration:
-                
-                Test Types: %s
-                Framework: %s
-                Coverage Threshold: %s%%
-                
-                Include:
-                - Unit test execution
-                - Integration test execution
-                - E2E test execution (if applicable)
-                - Code coverage analysis
-                - Coverage threshold enforcement
-                - Test result reporting
-                - Test artifact archiving
-                - Parallel test execution
-                - Test timeout configuration
-                - Failure handling
-                - Performance test execution
-                - Security test execution
-                
-                Provide configuration with best practices.
-                """, testTypes, framework, coverageThreshold);
-            
-            String testStage = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template test stage
+            String testStage = "test:\n  stage: test\n  script:\n    - " + framework + " test\n  coverage: '/Coverage: (\\d+%)$/'\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("testStage", testStage);
@@ -211,34 +134,8 @@ public class CICDPipelineToolService implements AiToolProvider {
         logger.info("🚀 Generating deployment stage for: {}", target);
         
         try {
-            String prompt = String.format("""
-                Generate a deployment stage configuration:
-                
-                Target: %s
-                Environment: %s
-                Strategy: %s
-                
-                Include:
-                - Pre-deployment validation
-                - %s deployment commands
-                - Health checks
-                - Smoke tests
-                - %s deployment strategy implementation
-                - Rollback procedure
-                - Post-deployment verification
-                - Monitoring setup
-                - Alert configuration
-                - Deployment notifications
-                - Approval gates (for production)
-                - Deployment logging
-                
-                Provide production-ready configuration.
-                """, target, environment, strategy, target, strategy);
-            
-            String deploymentStage = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template deployment stage
+            String deploymentStage = "deploy:\n  stage: deploy\n  script:\n    - echo 'Deploying to " + target + " (" + environment + ")'\n    - echo 'Using " + strategy + " strategy'\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("deploymentStage", deploymentStage);

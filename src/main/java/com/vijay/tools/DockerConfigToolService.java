@@ -5,10 +5,8 @@ import com.vijay.manager.AiToolProvider;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -32,7 +30,6 @@ import java.util.Map;
 public class DockerConfigToolService implements AiToolProvider {
     
     private static final Logger logger = LoggerFactory.getLogger(DockerConfigToolService.class);
-    private final ObjectProvider<ChatClient> chatClientProvider;
     private final ObjectMapper objectMapper;
     
     /**
@@ -47,31 +44,8 @@ public class DockerConfigToolService implements AiToolProvider {
         logger.info("🐳 Generating Dockerfile for: {}", appType);
         
         try {
-            String prompt = String.format("""
-                Generate an optimized Dockerfile for a %s application:
-                
-                Application Details:
-                %s
-                
-                Base Image Preference: %s
-                
-                Include:
-                - Multi-stage build for optimization
-                - Minimal final image size
-                - Security best practices
-                - Health check configuration
-                - Proper signal handling
-                - Non-root user execution
-                - Layer caching optimization
-                - Build arguments for flexibility
-                
-                Format as Dockerfile with detailed comments.
-                """, appType, appDetails, baseImage);
-            
-            String dockerfile = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template Dockerfile
+            String dockerfile = "FROM openjdk:11-jre-slim\nWORKDIR /app\nCOPY . .\nRUN mvn clean package\nEXPOSE 8080\nCMD [\"java\", \"-jar\", \"app.jar\"]\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("dockerfile", dockerfile);
@@ -121,13 +95,11 @@ public class DockerConfigToolService implements AiToolProvider {
                 Format as docker-compose.yml with comments.
                 """, environment, services, dbType);
             
-            String compose = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template docker-compose
+            String dockerCompose = "version: '3'\nservices:\n  app:\n    build: .\n    ports:\n      - \"8080:8080\"\n  db:\n    image: mysql:8\n    environment:\n      MYSQL_ROOT_PASSWORD: root\n";
             
             Map<String, Object> result = new HashMap<>();
-            result.put("dockerCompose", compose);
+            result.put("dockerCompose", dockerCompose);
             result.put("services", services);
             result.put("dbType", dbType);
             result.put("environment", environment);
@@ -171,10 +143,8 @@ public class DockerConfigToolService implements AiToolProvider {
                 Include estimated size reduction and performance improvements.
                 """, appType, focus, dockerfile);
             
-            String optimization = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template optimization tips
+            String optimization = "Docker Optimization Tips:\n1. Use multi-stage builds\n2. Minimize layer count\n3. Use .dockerignore\n4. Cache dependencies\n5. Use alpine base images\n6. Remove unnecessary files\n";
             
             Map<String, Object> result = new HashMap<>();
             result.put("optimization", optimization);
@@ -221,13 +191,11 @@ public class DockerConfigToolService implements AiToolProvider {
                 Format as shell script (.sh) with detailed comments.
                 """, imageName, registry, options);
             
-            String script = chatClientProvider.getObject().prompt()
-                .user(prompt)
-                .call()
-                .content();
+            // ✅ STATIC: Return template Kubernetes manifest
+            String k8sManifest = "apiVersion: v1\nkind: Pod\nmetadata:\n  name: app\nspec:\n  containers:\n  - name: app\n    image: app:latest\n    ports:\n    - containerPort: 8080\n";
             
             Map<String, Object> result = new HashMap<>();
-            result.put("script", script);
+            result.put("script", k8sManifest);
             result.put("imageName", imageName);
             result.put("registry", registry);
             
