@@ -43,7 +43,6 @@ public class AIProviderConfig {
                 .maxMessages(20)
                 .build();
     }
-
     @Bean
     public ToolCallingManager toolCallingManager() {
         System.out.println("tool callback working");
@@ -228,20 +227,20 @@ public class AIProviderConfig {
      * 
      * @param chatModel The chat model to use (OpenAI, Ollama, etc.)
      * @param selectedBrainBeans List of brain advisor beans to include
-     * @param aiAgentToolService The tool service for function calling
+     * @param allToolProviders The tool service for function calling
      * @return ChatClient with only selected brains
      */
     public ChatClient buildDynamicChatClient(
             org.springframework.ai.chat.model.ChatModel chatModel,
             java.util.List<org.springframework.ai.chat.client.advisor.api.CallAdvisor> selectedBrainBeans,
-            AIAgentToolService aiAgentToolService) {
+            java.util.List<AiToolProvider> allToolProviders) {
         
         logger.info("🔧 Building dynamic ChatClient with {} selected brains", selectedBrainBeans.size());
         
         if (selectedBrainBeans.isEmpty()) {
             logger.warn("⚠️ No brains selected, building client with no advisors");
             return ChatClient.builder(chatModel)
-                    .defaultTools(aiAgentToolService)
+                    .defaultTools((Object[]) allToolProviders.toArray(new AiToolProvider[0]))
                     .build();
         }
         
@@ -253,7 +252,7 @@ public class AIProviderConfig {
         
         return ChatClient.builder(chatModel)
                 .defaultAdvisors(advisorArray)
-                .defaultTools(aiAgentToolService)  // All tools available
+                .defaultTools((Object[]) allToolProviders.toArray(new AiToolProvider[0])) // All tools available
                 .build();
     }
 
