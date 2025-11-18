@@ -36,12 +36,40 @@ class PersonalityAdvisorTest {
         when(response.chatResponse().getResult().getOutput().getText()).thenReturn("Original response text");
         when(personalityEngine.getTraits()).thenReturn(traits);
         when(traits.getArchetype()).thenReturn("MENTOR");
+        when(personalityEngine.applyPersonality("Original response text")).thenReturn("Personalized response text");
 
         ChatClientResponse result = advisor.adviseCall(request, chain);
 
         assertThat(result).isSameAs(response);
         verify(chain, times(1)).nextCall(request);
         verify(personalityEngine, times(1)).applyPersonality("Original response text");
+    }
+
+    @Test
+    @DisplayName("adviseCall should log personality details when empathy and helpfulness flags are enabled")
+    void adviseCall_logsPersonalityFlags() {
+        ChatClientRequest request = mock(ChatClientRequest.class);
+        CallAdvisorChain chain = mock(CallAdvisorChain.class);
+        ChatClientResponse response = mock(ChatClientResponse.class, Mockito.RETURNS_DEEP_STUBS);
+        PersonalityTraits traits = mock(PersonalityTraits.class);
+
+        when(chain.nextCall(request)).thenReturn(response);
+        when(response.chatResponse().getResult().getOutput().getText()).thenReturn("Original response text");
+        when(personalityEngine.getTraits()).thenReturn(traits);
+        when(traits.getArchetype()).thenReturn("MENTOR");
+        when(personalityEngine.applyPersonality("Original response text")).thenReturn("Personalized response text");
+        when(personalityEngine.isEmpathetic()).thenReturn(true);
+        when(personalityEngine.isPatient()).thenReturn(true);
+        when(personalityEngine.isHelpful()).thenReturn(true);
+
+        ChatClientResponse result = advisor.adviseCall(request, chain);
+
+        assertThat(result).isSameAs(response);
+        verify(chain, times(1)).nextCall(request);
+        verify(personalityEngine, times(1)).applyPersonality("Original response text");
+        verify(personalityEngine, times(1)).isEmpathetic();
+        verify(personalityEngine, times(1)).isPatient();
+        verify(personalityEngine, times(1)).isHelpful();
     }
 
     @Test

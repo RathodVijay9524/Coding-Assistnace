@@ -80,6 +80,22 @@ class CodeEditControllerTest {
     }
 
     @Test
+    @DisplayName("applyInlineEdit should return error response when InlineCodeEditor throws")
+    void applyInlineEdit_error() {
+        CodeEditRequest request = buildRequest();
+
+        when(inlineCodeEditor.applyInlineEdit(any(CodeEditRequest.class)))
+                .thenThrow(new RuntimeException("boom"));
+
+        ResponseEntity<?> responseEntity = controller.applyInlineEdit(request);
+
+        assertThat(responseEntity.getStatusCode().value()).isEqualTo(500);
+        Map<?,?> body = (Map<?,?>) responseEntity.getBody();
+        assertThat(body.get("status")).isEqualTo("error");
+        assertThat(body.get("message").toString()).contains("boom");
+    }
+
+    @Test
     @DisplayName("getAlternativeEdits should return alternatives count and list")
     void getAlternativeEdits_success() {
         CodeEditRequest request = buildRequest();
@@ -96,6 +112,22 @@ class CodeEditControllerTest {
         assertThat((List<?>) body.get("alternatives")).hasSize(2);
 
         verify(inlineCodeEditor).getAlternativeEdits(eq(request), eq(3));
+    }
+
+    @Test
+    @DisplayName("getAlternativeEdits should return error response when InlineCodeEditor throws")
+    void getAlternativeEdits_error() {
+        CodeEditRequest request = buildRequest();
+
+        when(inlineCodeEditor.getAlternativeEdits(eq(request), eq(3)))
+                .thenThrow(new RuntimeException("fail"));
+
+        ResponseEntity<?> responseEntity = controller.getAlternativeEdits(request, 3);
+
+        assertThat(responseEntity.getStatusCode().value()).isEqualTo(500);
+        Map<?,?> body = (Map<?,?>) responseEntity.getBody();
+        assertThat(body.get("status")).isEqualTo("error");
+        assertThat(body.get("message").toString()).contains("fail");
     }
 
     @Test
@@ -118,6 +150,21 @@ class CodeEditControllerTest {
     }
 
     @Test
+    @DisplayName("validateEdit should return error response when InlineCodeEditor throws")
+    void validateEdit_error() {
+        CodeEditResult result = buildResult();
+
+        when(inlineCodeEditor.validateEdit(result)).thenThrow(new RuntimeException("oops"));
+
+        ResponseEntity<?> responseEntity = controller.validateEdit(result);
+
+        assertThat(responseEntity.getStatusCode().value()).isEqualTo(500);
+        Map<?,?> body = (Map<?,?>) responseEntity.getBody();
+        assertThat(body.get("status")).isEqualTo("error");
+        assertThat(body.get("message").toString()).contains("oops");
+    }
+
+    @Test
     @DisplayName("applyEditToFile should call InlineCodeEditor and return success message")
     void applyEditToFile_success() {
         CodeEditResult result = buildResult();
@@ -133,6 +180,23 @@ class CodeEditControllerTest {
         assertThat(body.get("linesChanged")).isEqualTo(result.getLinesChanged());
 
         verify(inlineCodeEditor).applyEditToFile(result, filePath);
+    }
+
+    @Test
+    @DisplayName("applyEditToFile should return error response when InlineCodeEditor throws")
+    void applyEditToFile_error() {
+        CodeEditResult result = buildResult();
+        String filePath = "/path/UserService.java";
+
+        doThrow(new RuntimeException("file error"))
+                .when(inlineCodeEditor).applyEditToFile(result, filePath);
+
+        ResponseEntity<?> responseEntity = controller.applyEditToFile(filePath, result);
+
+        assertThat(responseEntity.getStatusCode().value()).isEqualTo(500);
+        Map<?,?> body = (Map<?,?>) responseEntity.getBody();
+        assertThat(body.get("status")).isEqualTo("error");
+        assertThat(body.get("message").toString()).contains("file error");
     }
 
     @Test

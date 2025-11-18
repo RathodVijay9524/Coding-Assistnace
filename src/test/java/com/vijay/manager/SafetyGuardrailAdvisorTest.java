@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class SafetyGuardrailAdvisorTest {
@@ -89,10 +90,34 @@ class SafetyGuardrailAdvisorTest {
     }
 
     @Test
+    @DisplayName("adviseCall should recover when chain throws by returning fallback response")
+    void adviseCall_chainThrows_returnsFallback() {
+        ReasoningState state = new ReasoningState("Run dangerous tool");
+        state.approveTools(new ArrayList<>(List.of("executeCommand")));
+        GlobalBrainContext.setReasoningState(state);
+
+        ChatClientRequest request = mock(ChatClientRequest.class);
+        CallAdvisorChain chain = mock(CallAdvisorChain.class);
+
+        when(chain.nextCall(request)).thenThrow(new RuntimeException("primary call failed"));
+
+        assertThatThrownBy(() -> advisor.adviseCall(request, chain))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("primary call failed");
+    }
+
+    @Test
     @DisplayName("checkToolSafety should flag known dangerous tools as unsafe")
     void checkToolSafety_flagsDangerousTools() {
         assertThat(advisor.checkToolSafety("executeCommand")).isFalse();
         assertThat(advisor.checkToolSafety("deleteFile")).isFalse();
         assertThat(advisor.checkToolSafety("analyzeProjectComprehensive")).isTrue();
+    }
+
+    @Test
+    @DisplayName("getDangerousTools should include key dangerous operations")
+    void getDangerousTools_containsExpectedEntries() {
+        var dangerous = advisor.getDangerousTools();
+        assertThat(dangerous).contains("executeCommand", "deleteFile", "deployCode");
     }
 }
