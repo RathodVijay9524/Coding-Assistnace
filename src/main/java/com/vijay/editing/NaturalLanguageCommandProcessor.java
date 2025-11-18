@@ -440,6 +440,9 @@ public class NaturalLanguageCommandProcessor {
         private String description;
         private String details;
         
+        public ExecutionStep() {
+        }
+        
         public ExecutionStep(int number, String description, String details) {
             this.stepNumber = number;
             this.description = description;

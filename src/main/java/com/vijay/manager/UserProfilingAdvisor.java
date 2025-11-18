@@ -259,6 +259,7 @@ public class UserProfilingAdvisor implements CallAdvisor, IAgentBrain {
             int startIdx = lowerQuery.indexOf("my name is") + 10;
             String remainder = query.substring(startIdx).trim();
             String name = remainder.split("[,.]")[0].trim();
+            name = sanitizeName(name);
             if (!name.isEmpty() && name.length() < 50) {
                 return name;
             }
@@ -269,6 +270,7 @@ public class UserProfilingAdvisor implements CallAdvisor, IAgentBrain {
             int startIdx = lowerQuery.indexOf("i'm ") + 4;
             String remainder = query.substring(startIdx).trim();
             String name = remainder.split("[,.]")[0].trim();
+            name = sanitizeName(name);
             if (!name.isEmpty() && name.length() < 50) {
                 return name;
             }
@@ -279,11 +281,21 @@ public class UserProfilingAdvisor implements CallAdvisor, IAgentBrain {
             int startIdx = lowerQuery.indexOf("call me ") + 8;
             String remainder = query.substring(startIdx).trim();
             String name = remainder.split("[,.]")[0].trim();
+            name = sanitizeName(name);
             if (!name.isEmpty() && name.length() < 50) {
                 return name;
             }
         }
         
         return null;
+    }
+
+    private String sanitizeName(String name) {
+        String lower = name.toLowerCase();
+        int andIndex = lower.indexOf(" and ");
+        if (andIndex > 0) {
+            return name.substring(0, andIndex).trim();
+        }
+        return name;
     }
 }

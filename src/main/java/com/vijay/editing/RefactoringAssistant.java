@@ -258,8 +258,9 @@ public class RefactoringAssistant {
             affected.add(projectRoot + "/src/main/java/com/example/" + className + ".java");
         }
         
-        // Add test files
-        for (String file : affected) {
+        // Add test files (iterate over a copy to avoid modifying the list during iteration)
+        List<String> mainFiles = new ArrayList<>(affected);
+        for (String file : mainFiles) {
             affected.add(file.replace("/src/main/", "/src/test/").replace(".java", "Test.java"));
         }
         
@@ -392,6 +393,9 @@ public class RefactoringAssistant {
         private int stepNumber;
         private String description;
         private String details;
+        
+        public RefactoringStep() {
+        }
         
         public RefactoringStep(int number, String desc, String details) {
             this.stepNumber = number;

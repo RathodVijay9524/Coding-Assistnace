@@ -268,7 +268,11 @@ public class ASTAnalysisService {
     }
     
     private int calculateMethodComplexity(String sourceCode, String methodName) {
-        return calculateCyclomaticComplexity(sourceCode) / Math.max(1, extractMethods(sourceCode).size());
+        // Avoid calling extractMethods here to prevent recursive analysis
+        // Heuristic: distribute overall cyclomatic complexity across occurrences of this method name
+        int totalComplexity = calculateCyclomaticComplexity(sourceCode);
+        int occurrences = Math.max(1, countOccurrences(sourceCode, methodName + "\\s*\\("));
+        return Math.max(1, totalComplexity / occurrences);
     }
     
     private int estimateMethodLines(String sourceCode, String methodName) {

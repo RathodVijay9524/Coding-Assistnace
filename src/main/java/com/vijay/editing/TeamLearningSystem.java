@@ -398,6 +398,9 @@ public class TeamLearningSystem {
         private String description;
         private int frequency;
         
+        public CodePattern() {
+        }
+        
         public CodePattern(String name, String category, String description) {
             this.name = name;
             this.category = category;
@@ -433,6 +436,9 @@ public class TeamLearningSystem {
         private String description;
         private String category;
         private int frequency;
+        
+        public BestPractice() {
+        }
         
         public BestPractice(String description, String category) {
             this.description = description;

@@ -74,8 +74,13 @@ public class PersonalityAdvisor implements CallAdvisor, IAgentBrain {
             
             logger.info("✅ Brain 9: Personality applied - Archetype: {}", 
                 personalityEngine.getTraits().getArchetype());
-            logger.debug("📝 Original length: {}, Personalized length: {}", 
-                responseText.length(), personalizedResponse.length());
+            if (personalizedResponse != null) {
+                logger.debug("📝 Original length: {}, Personalized length: {}", 
+                    responseText.length(), personalizedResponse.length());
+            } else {
+                logger.debug("📝 Original length: {}, Personalized response was null (no changes applied)", 
+                    responseText.length());
+            }
             
             return response;
             

@@ -9,6 +9,7 @@ import org.springframework.ai.chat.client.advisor.api.CallAdvisor;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisorChain;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -20,8 +21,14 @@ public class EnhancedSelfRefineAdvisor implements CallAdvisor {
     private static final double MIN_ACCEPTABLE_RATING = 3.0;
     private static final int MAX_REFINEMENT_ATTEMPTS = 2;
 
+    @Autowired
     public EnhancedSelfRefineAdvisor(OpenAiChatModel chatModel) {
-        this.judgeClient = ChatClient.builder(chatModel).build();
+        this(ChatClient.builder(chatModel).build());
+    }
+
+    // Secondary constructor for tests, allows injecting a mocked ChatClient
+    public EnhancedSelfRefineAdvisor(ChatClient judgeClient) {
+        this.judgeClient = judgeClient;
     }
 
     @Override

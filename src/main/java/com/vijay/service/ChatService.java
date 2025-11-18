@@ -136,6 +136,12 @@ public class ChatService {
                     )
                     .call()
                     .content();
+
+            if (response == null) {
+                logger.warn("[{}]    ⚠️ ChatClient returned null response, using empty string", traceId);
+                response = "";
+            }
+
             logger.info("[{}]    ✅ ChatClient returned response (length: {})", traceId, response.length());
 
             // ✅ STEP 4: Get the actually USED tools from the plan

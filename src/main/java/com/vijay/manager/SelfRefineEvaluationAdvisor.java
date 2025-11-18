@@ -8,6 +8,7 @@ import org.springframework.ai.chat.client.advisor.api.CallAdvisor;
 import org.springframework.ai.chat.client.advisor.api.CallAdvisorChain;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,9 +17,15 @@ public class SelfRefineEvaluationAdvisor implements CallAdvisor {
 
     private final ChatClient judgeClient;
 
+    @Autowired
     public SelfRefineEvaluationAdvisor(OpenAiChatModel judgeModel) {
         // दूसरा मॉडल जो केवल "judge" का काम करेगा
         this.judgeClient = ChatClient.builder(judgeModel).build();
+    }
+
+    // Secondary constructor for tests, allows injecting a mocked ChatClient
+    public SelfRefineEvaluationAdvisor(ChatClient judgeClient) {
+        this.judgeClient = judgeClient;
     }
 
 
