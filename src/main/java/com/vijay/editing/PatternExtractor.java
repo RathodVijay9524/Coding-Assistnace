@@ -1,11 +1,14 @@
 package com.vijay.editing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vijay.context.TraceContext;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -20,6 +23,7 @@ import java.util.stream.Collectors;
  * from team codebase. Identifies common practices and anti-patterns.
  * 
  * ✅ PHASE 3: Differentiation - Week 9
+ * ✅ ENHANCED: ChatClient integration for AI-powered pattern detection
  */
 @Service
 @RequiredArgsConstructor
@@ -27,6 +31,8 @@ public class PatternExtractor {
     
     private static final Logger logger = LoggerFactory.getLogger(PatternExtractor.class);
     private final ObjectMapper objectMapper;
+    @Qualifier("ollamaChatClient")
+    private final ChatClient chatClient;
     
     /**
      * Extract design patterns
@@ -227,6 +233,130 @@ public class PatternExtractor {
         }
     }
     
+    /**
+     * ✅ NEW: AI-powered pattern detection
+     */
+    @Tool(description = "Detect patterns using AI analysis")
+    public String detectPatternsWithAI(
+            @ToolParam(description = "Code snippet") String code,
+            @ToolParam(description = "Pattern type to detect") String patternType) {
+        
+        String traceId = TraceContext.getTraceId();
+        logger.info("[{}] 🤖 Detecting {} patterns with AI", traceId, patternType);
+        
+        try {
+            // Build prompt for LLM
+            String prompt = buildPatternPrompt(code, patternType);
+            
+            // Call ChatClient for pattern detection
+            String aiPatterns = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+            
+            logger.info("[{}]    ✅ AI pattern detection complete", traceId);
+            
+            // Parse AI patterns into structured format
+            List<AIDetectedPattern> patterns = parseAIPatterns(aiPatterns);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", "success");
+            result.put("patternType", patternType);
+            result.put("patterns", patterns);
+            result.put("patternCount", patterns.size());
+            result.put("source", "AI-Powered");
+            result.put("rawAnalysis", aiPatterns);
+            
+            return toJson(result);
+            
+        } catch (Exception e) {
+            logger.error("[{}]    ❌ AI pattern detection failed: {}", traceId, e.getMessage());
+            return errorResponse("AI pattern detection failed: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Build prompt for pattern detection
+     */
+    private String buildPatternPrompt(String code, String patternType) {
+        return String.format("""
+            Analyze the following code and identify %s patterns:
+            
+            Code:
+            ```java
+            %s
+            ```
+            
+            Pattern Type: %s
+            
+            For each pattern found, provide:
+            1. Pattern Name (what pattern is this)
+            2. Confidence (0.0-1.0 how confident you are)
+            3. Description (brief explanation)
+            4. Location (where in code it appears)
+            5. Improvement (how to improve it)
+            
+            Format as JSON array with objects containing: name, confidence, description, location, improvement
+            """, patternType, code, patternType);
+    }
+    
+    /**
+     * Parse AI detected patterns
+     */
+    private List<AIDetectedPattern> parseAIPatterns(String aiResponse) {
+        List<AIDetectedPattern> patterns = new ArrayList<>();
+        
+        try {
+            // Try to extract JSON array from response
+            String jsonStr = aiResponse;
+            
+            // Find JSON array in response
+            int startIdx = jsonStr.indexOf("[");
+            int endIdx = jsonStr.lastIndexOf("]");
+            
+            if (startIdx >= 0 && endIdx > startIdx) {
+                jsonStr = jsonStr.substring(startIdx, endIdx + 1);
+                
+                // Parse JSON array
+                var jsonArray = objectMapper.readValue(jsonStr, List.class);
+                
+                for (Object item : jsonArray) {
+                    if (item instanceof Map) {
+                        Map<String, Object> map = (Map<String, Object>) item;
+                        
+                        AIDetectedPattern pattern = new AIDetectedPattern();
+                        pattern.setName((String) map.getOrDefault("name", ""));
+                        
+                        Object confidenceObj = map.get("confidence");
+                        double confidence = 0.75;
+                        if (confidenceObj instanceof Number) {
+                            confidence = ((Number) confidenceObj).doubleValue();
+                        }
+                        pattern.setConfidence(Math.min(1.0, Math.max(0.0, confidence)));
+                        
+                        pattern.setDescription((String) map.getOrDefault("description", ""));
+                        pattern.setLocation((String) map.getOrDefault("location", ""));
+                        pattern.setImprovement((String) map.getOrDefault("improvement", ""));
+                        
+                        patterns.add(pattern);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Could not parse AI patterns as JSON: {}", e.getMessage());
+            // Fallback: create generic pattern
+            AIDetectedPattern fallback = new AIDetectedPattern();
+            fallback.setName("AI Analysis");
+            fallback.setDescription(aiResponse.substring(0, Math.min(200, aiResponse.length())));
+            fallback.setConfidence(0.7);
+            fallback.setLocation("Throughout code");
+            fallback.setImprovement("Review AI analysis for details");
+            patterns.add(fallback);
+        }
+        
+        return patterns;
+    }
+    
     // Helper methods
     
     private NamingAnalysis analyzeNaming(String code) {
@@ -425,5 +555,29 @@ public class PatternExtractor {
         public String getName() { return name; }
         public String getType() { return type; }
         public double getConfidence() { return confidence; }
+    }
+    
+    public static class AIDetectedPattern {
+        private String name;
+        private double confidence;
+        private String description;
+        private String location;
+        private String improvement;
+        
+        // Getters and setters
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        
+        public double getConfidence() { return confidence; }
+        public void setConfidence(double confidence) { this.confidence = confidence; }
+        
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+        
+        public String getLocation() { return location; }
+        public void setLocation(String location) { this.location = location; }
+        
+        public String getImprovement() { return improvement; }
+        public void setImprovement(String improvement) { this.improvement = improvement; }
     }
 }

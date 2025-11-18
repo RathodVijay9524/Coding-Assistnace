@@ -1,11 +1,14 @@
 package com.vijay.editing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vijay.context.TraceContext;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,6 +22,7 @@ import java.util.stream.Collectors;
  * Provides dependency metrics and analysis with AI tool integration.
  * 
  * ✅ PHASE 3: Differentiation - Week 10
+ * ✅ ENHANCED: ChatClient integration for AI-powered dependency analysis
  */
 @Service
 @RequiredArgsConstructor
@@ -26,6 +30,8 @@ public class DependencyGraphAnalyzer {
     
     private static final Logger logger = LoggerFactory.getLogger(DependencyGraphAnalyzer.class);
     private final ObjectMapper objectMapper;
+    @Qualifier("ollamaChatClient")
+    private final ChatClient chatClient;
     
     /**
      * Build complete dependency graph
@@ -196,6 +202,118 @@ public class DependencyGraphAnalyzer {
             logger.error("❌ Refactoring suggestion failed: {}", e.getMessage());
             return errorResponse("Refactoring suggestion failed: " + e.getMessage());
         }
+    }
+    
+    /**
+     * ✅ NEW: AI-powered dependency analysis
+     */
+    @Tool(description = "Analyze dependencies using AI")
+    public String analyzeWithAI(
+            @ToolParam(description = "Graph data as JSON") String graphJson,
+            @ToolParam(description = "Analysis type") String analysisType) {
+        
+        String traceId = TraceContext.getTraceId();
+        logger.info("[{}] 🤖 Analyzing dependencies with AI: {}", traceId, analysisType);
+        
+        try {
+            // Build prompt for LLM
+            String prompt = buildAnalysisPrompt(graphJson, analysisType);
+            
+            // Call ChatClient for analysis
+            String aiAnalysis = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+            
+            logger.info("[{}]    ✅ AI analysis complete", traceId);
+            
+            // Parse AI analysis into structured format
+            List<AnalysisInsight> insights = parseAnalysisInsights(aiAnalysis);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", "success");
+            result.put("analysisType", analysisType);
+            result.put("insights", insights);
+            result.put("insightCount", insights.size());
+            result.put("source", "AI-Powered");
+            result.put("rawAnalysis", aiAnalysis);
+            
+            return toJson(result);
+            
+        } catch (Exception e) {
+            logger.error("[{}]    ❌ AI analysis failed: {}", traceId, e.getMessage());
+            return errorResponse("AI analysis failed: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Build prompt for dependency analysis
+     */
+    private String buildAnalysisPrompt(String graphJson, String analysisType) {
+        return String.format("""
+            Analyze the following project dependency graph and provide insights for: %s
+            
+            Dependency Graph:
+            %s
+            
+            Analysis Type: %s
+            
+            For each insight, provide:
+            1. Issue/Finding (what was found)
+            2. Impact (why it matters)
+            3. Severity (Critical, High, Medium, Low)
+            4. Recommendation (how to fix it)
+            
+            Format as JSON array with objects containing: issue, impact, severity, recommendation
+            """, analysisType, graphJson, analysisType);
+    }
+    
+    /**
+     * Parse AI analysis insights
+     */
+    private List<AnalysisInsight> parseAnalysisInsights(String aiResponse) {
+        List<AnalysisInsight> insights = new ArrayList<>();
+        
+        try {
+            // Try to extract JSON array from response
+            String jsonStr = aiResponse;
+            
+            // Find JSON array in response
+            int startIdx = jsonStr.indexOf("[");
+            int endIdx = jsonStr.lastIndexOf("]");
+            
+            if (startIdx >= 0 && endIdx > startIdx) {
+                jsonStr = jsonStr.substring(startIdx, endIdx + 1);
+                
+                // Parse JSON array
+                var jsonArray = objectMapper.readValue(jsonStr, List.class);
+                
+                for (Object item : jsonArray) {
+                    if (item instanceof Map) {
+                        Map<String, Object> map = (Map<String, Object>) item;
+                        
+                        AnalysisInsight insight = new AnalysisInsight();
+                        insight.setIssue((String) map.getOrDefault("issue", ""));
+                        insight.setImpact((String) map.getOrDefault("impact", ""));
+                        insight.setSeverity((String) map.getOrDefault("severity", "Medium"));
+                        insight.setRecommendation((String) map.getOrDefault("recommendation", ""));
+                        
+                        insights.add(insight);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Could not parse AI insights as JSON: {}", e.getMessage());
+            // Fallback: create generic insight
+            AnalysisInsight fallback = new AnalysisInsight();
+            fallback.setIssue("AI Analysis");
+            fallback.setImpact(aiResponse.substring(0, Math.min(200, aiResponse.length())));
+            fallback.setSeverity("Medium");
+            fallback.setRecommendation("Review AI analysis for details");
+            insights.add(fallback);
+        }
+        
+        return insights;
     }
     
     // Helper methods
@@ -396,5 +514,25 @@ public class DependencyGraphAnalyzer {
         public String getPriority() { return priority; }
         public String getCategory() { return category; }
         public void setCategory(String category) { this.category = category; }
+    }
+    
+    public static class AnalysisInsight {
+        private String issue;
+        private String impact;
+        private String severity;
+        private String recommendation;
+        
+        // Getters and setters
+        public String getIssue() { return issue; }
+        public void setIssue(String issue) { this.issue = issue; }
+        
+        public String getImpact() { return impact; }
+        public void setImpact(String impact) { this.impact = impact; }
+        
+        public String getSeverity() { return severity; }
+        public void setSeverity(String severity) { this.severity = severity; }
+        
+        public String getRecommendation() { return recommendation; }
+        public void setRecommendation(String recommendation) { this.recommendation = recommendation; }
     }
 }

@@ -1,11 +1,14 @@
 package com.vijay.editing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vijay.context.TraceContext;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -20,6 +23,7 @@ import java.util.stream.Collectors;
  * Provides method extraction, renaming, pattern, and bug fix suggestions.
  * 
  * ✅ PHASE 2: Intelligent Editing - Week 2
+ * ✅ ENHANCED: ChatClient integration for LLM-powered suggestions
  */
 @Service
 @RequiredArgsConstructor
@@ -28,6 +32,8 @@ public class InlineSuggestionEngine {
     private static final Logger logger = LoggerFactory.getLogger(InlineSuggestionEngine.class);
     private final ObjectMapper objectMapper;
     private final CodeSelectionAnalyzer codeSelectionAnalyzer;
+    @Qualifier("ollamaChatClient")
+    private final ChatClient chatClient;
     
     /**
      * Get inline suggestions at cursor position
@@ -204,6 +210,125 @@ public class InlineSuggestionEngine {
         return suggestions;
     }
     
+    /**
+     * ✅ NEW: Get LLM-powered suggestions using ChatClient
+     */
+    @Tool(description = "Get AI-powered suggestions for code")
+    public String getAIPoweredSuggestions(
+            @ToolParam(description = "Code block") String codeBlock,
+            @ToolParam(description = "Context/intent") String context) {
+        
+        String traceId = TraceContext.getTraceId();
+        logger.info("[{}] 💡 Getting AI-powered suggestions for code block", traceId);
+        
+        try {
+            // Build prompt for LLM
+            String prompt = buildSuggestionPrompt(codeBlock, context);
+            
+            // Call ChatClient for suggestions
+            String aiSuggestions = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+            
+            logger.info("[{}]    ✅ AI suggestions generated", traceId);
+            
+            // Parse and structure AI suggestions
+            List<InlineSuggestion> suggestions = parseAISuggestions(aiSuggestions);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", "success");
+            result.put("source", "AI-Powered");
+            result.put("suggestions", suggestions);
+            result.put("count", suggestions.size());
+            result.put("rawAIResponse", aiSuggestions);
+            
+            return toJson(result);
+            
+        } catch (Exception e) {
+            logger.error("[{}]    ❌ AI suggestion failed: {}", traceId, e.getMessage());
+            return errorResponse("AI suggestion failed: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Build prompt for LLM suggestion generation
+     */
+    private String buildSuggestionPrompt(String codeBlock, String context) {
+        return String.format("""
+            Analyze the following code and provide 3-5 specific, actionable suggestions for improvement.
+            
+            Context: %s
+            
+            Code:
+            ```java
+            %s
+            ```
+            
+            For each suggestion, provide:
+            1. Type (e.g., "Extract Method", "Add Null Check", "Optimize Loop")
+            2. Title (short description)
+            3. Description (why this matters)
+            4. Relevance score (0.0-1.0)
+            
+            Format as JSON array with objects containing: type, title, description, relevance
+            """, context, codeBlock);
+    }
+    
+    /**
+     * Parse AI suggestions from LLM response
+     */
+    private List<InlineSuggestion> parseAISuggestions(String aiResponse) {
+        List<InlineSuggestion> suggestions = new ArrayList<>();
+        
+        try {
+            // Try to extract JSON array from response
+            String jsonStr = aiResponse;
+            
+            // Find JSON array in response
+            int startIdx = jsonStr.indexOf("[");
+            int endIdx = jsonStr.lastIndexOf("]");
+            
+            if (startIdx >= 0 && endIdx > startIdx) {
+                jsonStr = jsonStr.substring(startIdx, endIdx + 1);
+                
+                // Parse JSON array
+                var jsonArray = objectMapper.readValue(jsonStr, List.class);
+                
+                for (Object item : jsonArray) {
+                    if (item instanceof Map) {
+                        Map<String, Object> map = (Map<String, Object>) item;
+                        
+                        InlineSuggestion suggestion = new InlineSuggestion();
+                        suggestion.setType((String) map.getOrDefault("type", "Improvement"));
+                        suggestion.setTitle((String) map.getOrDefault("title", ""));
+                        suggestion.setDescription((String) map.getOrDefault("description", ""));
+                        
+                        Object relevanceObj = map.get("relevance");
+                        double relevance = 0.75;
+                        if (relevanceObj instanceof Number) {
+                            relevance = ((Number) relevanceObj).doubleValue();
+                        }
+                        suggestion.setRelevance(Math.min(1.0, Math.max(0.0, relevance)));
+                        
+                        suggestions.add(suggestion);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Could not parse AI suggestions as JSON, falling back to text parsing: {}", e.getMessage());
+            // Fallback: create generic suggestion from response
+            InlineSuggestion fallback = new InlineSuggestion();
+            fallback.setType("AI Suggestion");
+            fallback.setTitle("AI Analysis");
+            fallback.setDescription(aiResponse.substring(0, Math.min(200, aiResponse.length())));
+            fallback.setRelevance(0.7);
+            suggestions.add(fallback);
+        }
+        
+        return suggestions;
+    }
+
     /**
      * Get suggestions for specific code block
      */

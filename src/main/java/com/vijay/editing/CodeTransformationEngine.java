@@ -1,11 +1,14 @@
 package com.vijay.editing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.vijay.context.TraceContext;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -20,6 +23,7 @@ import java.util.stream.Collectors;
  * Handles single file and multi-file transformations with rollback support.
  * 
  * ✅ PHASE 2: Intelligent Editing - Week 3-4
+ * ✅ ENHANCED: LLM integration for intelligent transformations
  */
 @Service
 @RequiredArgsConstructor
@@ -27,6 +31,8 @@ public class CodeTransformationEngine {
     
     private static final Logger logger = LoggerFactory.getLogger(CodeTransformationEngine.class);
     private final ObjectMapper objectMapper;
+    @Qualifier("ollamaChatClient")
+    private final ChatClient chatClient;
     
     /**
      * Transform single file
@@ -193,6 +199,89 @@ public class CodeTransformationEngine {
         }
     }
     
+    /**
+     * ✅ NEW: LLM-powered intelligent transformation
+     */
+    @Tool(description = "Transform code using AI/LLM")
+    public String transformWithAI(
+            @ToolParam(description = "Original code") String originalCode,
+            @ToolParam(description = "Transformation intent") String intent) {
+        
+        String traceId = TraceContext.getTraceId();
+        logger.info("[{}] 🤖 Transforming code with AI: {}", traceId, intent);
+        
+        try {
+            // Build prompt for LLM
+            String prompt = buildTransformationPrompt(originalCode, intent);
+            
+            // Call ChatClient for transformation
+            String transformedCode = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+            
+            logger.info("[{}]    ✅ AI transformation complete", traceId);
+            
+            // Extract code from response (may be wrapped in markdown)
+            String extractedCode = extractCodeFromResponse(transformedCode);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", "success");
+            result.put("originalCode", originalCode);
+            result.put("transformedCode", extractedCode);
+            result.put("intent", intent);
+            result.put("source", "AI-Powered");
+            result.put("changes", calculateChanges(originalCode, extractedCode));
+            result.put("rawAIResponse", transformedCode);
+            
+            return toJson(result);
+            
+        } catch (Exception e) {
+            logger.error("[{}]    ❌ AI transformation failed: {}", traceId, e.getMessage());
+            return errorResponse("AI transformation failed: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Build prompt for LLM transformation
+     */
+    private String buildTransformationPrompt(String originalCode, String intent) {
+        return String.format("""
+            Transform the following code according to this intent: %s
+            
+            Original Code:
+            ```java
+            %s
+            ```
+            
+            Requirements:
+            1. Maintain the same functionality
+            2. Follow Java best practices
+            3. Improve readability and maintainability
+            4. Add appropriate error handling if needed
+            5. Return ONLY the transformed code in a code block
+            
+            Transformed Code:
+            """, intent, originalCode);
+    }
+    
+    /**
+     * Extract code from LLM response (handles markdown code blocks)
+     */
+    private String extractCodeFromResponse(String response) {
+        // Try to extract code from markdown code block
+        String codeBlockPattern = "```(?:java)?\\s*([\\s\\S]*?)```";
+        Pattern pattern = Pattern.compile(codeBlockPattern);
+        Matcher matcher = pattern.matcher(response);
+        
+        if (matcher.find()) {
+            return matcher.group(1).trim();
+        }
+        
+        // If no code block found, return the response as-is
+        return response.trim();
+    }
+
     /**
      * Rollback transformation
      */
